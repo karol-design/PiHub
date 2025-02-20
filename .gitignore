@@ -1,0 +1,41 @@
+# Prerequisites
+*.d
+
+# Build artifacts
+build
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# VSCode
+*.VSCode
+*.editorconfig
+
+# Valgrind output
+valgrind-out.txt
+
+# Project-specific
+ignored_docs
