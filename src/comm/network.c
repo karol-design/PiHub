@@ -396,7 +396,7 @@ STATIC void* server_client_handler(void* arg) {
             } else if(events[i].data.fd == client.disconnect_eventfd) {
                 // Disconnect signal received
                 int err = close(client.fd); // Close client socket
-                if(close(client.fd) == -1) {
+                if(err == -1) {
                     log_error("close() returned: -1 (err: %s)", strerror(errno));
                 }
                 err = close(client.disconnect_eventfd); // Close eventfd
