@@ -6,12 +6,15 @@
 #ifndef __TCP_SERVER_H__
 #define __TCP_SERVER_H__
 
-#include <pthread.h> // For: pthread_mutex_t
-#include <stdbool.h> // For: bool
-#include <stdint.h>  // For: std types
-#include <stdlib.h>  // For: size_t
+#include <arpa/inet.h> // For: inet_ntop
+#include <pthread.h>   // For: pthread_mutex_t
+#include <stdbool.h>   // For: bool
+#include <stdint.h>    // For: std types
+#include <stdlib.h>    // For: size_t
 
 #include "utils/list.h" // For: List_t
+
+#define IPV4_ADDRSTR_LENGHT INET_ADDRSTRLEN
 
 typedef enum {
     SERVER_ERR_OK = 0x00,           /**< Operation finished successfully */
@@ -98,6 +101,15 @@ typedef struct Server {
      */
     ServerError_t (*broadcast)(struct Server* this, const uint8_t* data, size_t len);
 
+    /**
+     * @brief Get the char string with client's IPv4 address
+     * @param[in]  this  Pointer to the Server instance
+     * @param[in]  client  Handle of the client for which the address should be retrieved
+     * @param[out]  inet_addrstr_buf  Pointer to the memory where data will be stored
+     * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_NET_FAILURE otherwise
+     * @note The inet_addrstr_buf buffer should be at least IPV4_ADDRSTR_LENGHT long
+     */
+    ServerError_t (*get_client_ip)(struct Server* this, ServerClient_t client, char* inet_addrstr_buf);
 
     /**
      * @brief Disconnect a client

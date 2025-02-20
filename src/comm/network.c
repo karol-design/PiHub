@@ -1,6 +1,5 @@
 #include "comm/network.h"
 
-#include <arpa/inet.h>   // For: inet_ntop
 #include <errno.h>       // For: errno
 #include <netdb.h>       // For: struct addrinfo, getaddrinfo(), socket()
 #include <stdbool.h>     // For: bool
@@ -26,6 +25,7 @@ STATIC ServerError_t server_run(Server_t* this);
 STATIC ServerError_t server_read(Server_t* this, ServerClient_t client, uint8_t* buf, size_t buf_length, ssize_t* len);
 STATIC ServerError_t server_write(Server_t* this, ServerClient_t client, const uint8_t* data, size_t len);
 STATIC ServerError_t server_broadcast(Server_t* this, const uint8_t* data, size_t len);
+STATIC ServerError_t server_get_client_ip(Server_t* this, ServerClient_t client, char* inet_addrstr_buf);
 STATIC ServerError_t server_disconnect(Server_t* this, ServerClient_t client);
 STATIC ServerError_t server_shutdown(Server_t* this);
 STATIC ServerError_t server_destroy(Server_t** this);
@@ -349,6 +349,7 @@ STATIC void* server_listen(void* arg) {
 }
 
 STATIC void* server_client_handler(void* arg) {
+    // TODO: Split server_client_handler into at least two functions (separation of concerns and shorter functions)
     if(!arg) {
         log_error("NULL ptr provided to server_listen - exiting the thread!");
         pthread_exit(NULL);
@@ -417,6 +418,37 @@ STATIC void* server_client_handler(void* arg) {
 
 STATIC int compare_client_fd(const void* a, const void* b) {
     return (*(int*)a - *(int*)b);
+}
+
+STATIC ServerError_t server_get_client_ip(Server_t* this, ServerClient_t client, char* inet_addrstr_) {
+    if(!this || !inet_addrstr_) {
+        return SERVER_ERR_NULL_ARGUMENT;
+    }
+
+    // Retrieve the address associated with the client's socket file descriptor
+    struct sockaddr addr;
+    int addr_len = sizeof(struct sockaddr_in);
+    int ret = getpeername(client.fd, &addr, &addr_len);
+    if(ret == -1) {
+        log_error("getpeername failed and returned -1 (err: %s)", strerror(errno));
+        return SERVER_ERR_NET_FAILURE;
+    }
+
+    struct sockaddr_in* addr_in = (struct sockaddr_in*)&addr;
+    struct in_addr ip_addr = addr_in->sin_addr;
+
+    // Convert the address structure into a character string with dotted notation IPv4 addr
+    char ip_addr_str[INET_ADDRSTRLEN];
+    char* inet_ret = inet_ntop(SERVER_IP_VER, &ip_addr, ip_addr_str, INET_ADDRSTRLEN);
+    if(inet_ret == NULL) {
+        log_error("failed to convert the ip addr struct to a char string (err: %s)", strerror(errno));
+        return SERVER_ERR_NET_FAILURE;
+    }
+
+    // If the addr was retrieved and converted properly copy it to the output buffer
+    memmove(inet_addrstr_, ip_addr_str, INET_ADDRSTRLEN);
+
+    return SERVER_ERR_OK;
 }
 
 STATIC int server_create_socket(const char* port) {
@@ -499,6 +531,7 @@ Server_t* server_create(const ServerConfig_t* cfg) {
     server->disconnect = server_disconnect;
     server->shutdown = server_shutdown;
     server->destroy = server_destroy;
+    server->get_client_ip = server_get_client_ip;
 
     return server;
 }

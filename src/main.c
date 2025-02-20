@@ -82,8 +82,10 @@ void test_server() {
     log_info("Connected clients:");
     ListNode_t* node = server->clients_list->head;
     while(node) {
+        char ip_str[IPV4_ADDRSTR_LENGHT];
         ServerClient_t* client = (ServerClient_t*)(node->data);
-        log_info("Client fd: %d, thread id: %lu", client->fd, client->thread);
+        server->get_client_ip(server, *client, ip_str);
+        log_info("Client fd: %d, thread id: %lu, ip: %s", client->fd, client->thread, ip_str);
         node = node->next;
     }
 
