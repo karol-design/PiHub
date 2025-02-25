@@ -17,9 +17,9 @@ typedef enum {
     LIST_ERR_OK = 0x00,          /**< Operation finished successfully */
     LIST_ERR_NODE_NOT_FOUND,     /**< Error: No matching node found */
     LIST_ERR_NULL_ARGUMENT,      /**< Error: NULL pointer passed as argument */
-    LIST_ERR_MALLOC_FAILED,      /**< Error: Dynamic memory allocation failed */
+    LIST_ERR_MALLOC_FAILURE,     /**< Error: Dynamic memory allocation failed */
     LIST_ERR_INCORRECT_ARGUMENT, /**< Error: Incorrect argument provided */
-    LIST_ERR_MULTITHREAD_ISSUE,  /**< Error: Thread-safety related issue */
+    LIST_ERR_PTHREAD_ISSUE,      /**< Error: Thread-safety related issue */
     LIST_ERR_GENERIC             /**< Error: Generic error */
 } ListError_t;
 
@@ -40,57 +40,57 @@ typedef struct List {
 
     /**
      * @brief Add a new node with containing 'data' at the end of the list
-     * @param[in]  this  Pointer to the Linked List instance
+     * @param[in]  ctx  Pointer to the Linked List instance
      * @param[in]  data  Pointer to the 'data' to be copied into the new node
-     * @param[in]  lenght Size in bytes of the data to be stored
-     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_MALLOC_FAILED otherwise
+     * @param[in]  length Size in bytes of the data to be stored
+     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_MALLOC_FAILURE otherwise
      */
-    ListError_t (*push)(struct List* this, void* data, size_t length);
+    ListError_t (*push)(struct List* ctx, void* data, size_t length);
 
     /**
      * @brief Retrieve the head node
-     * @param[in]  this  Pointer to the Linked List instance
+     * @param[in]  ctx  Pointer to the Linked List instance
      * @return Pointer to the head node, NULL if the list is empty
      */
-    ListNode_t* (*get_head)(struct List* this);
+    ListNode_t* (*get_head)(struct List* ctx);
 
     /**
      * @brief Retrieve the tail node
-     * @param[in]  this  Pointer to the Linked List instance
+     * @param[in]  ctx  Pointer to the Linked List instance
      * @return Pointer to the tail node, NULL if the list is empty
      */
-    ListNode_t* (*get_tail)(struct List* this);
+    ListNode_t* (*get_tail)(struct List* ctx);
 
     /**
      * @brief Get the number of nodes
-     * @param[in]  this  Pointer to the Linked List instance
+     * @param[in]  ctx  Pointer to the Linked List instance
      * @return Number of nodes in this linked list on success or -1 on failure
      */
-    int32_t (*get_length)(struct List* this);
+    int32_t (*get_length)(struct List* ctx);
 
     /**
      * @brief Remove the first node whose data is equal to 'data'
-     * @param[in]  this  Pointer to the Linked List instance
+     * @param[in]  ctx  Pointer to the Linked List instance
      * @param[in]  data  Pointer to data to look for
-     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_MULTITHREAD_ISSUE otherwise
+     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_PTHREAD_ISSUE otherwise
      */
-    ListError_t (*remove)(struct List* this, const void* data);
+    ListError_t (*remove)(struct List* ctx, const void* data);
 
     /**
      * @brief Traverse through all nodes and apply func to the data of each one
-     * @param[in]  this  Pointer to the Linked List instance
+     * @param[in]  ctx  Pointer to the Linked List instance
      * @param[in]  func  Pointer to function that should be called for each node
-     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_MULTITHREAD_ISSUE otherwise
+     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_PTHREAD_ISSUE otherwise
      * @note This function returns if at any point func() does not return LIST_ERR_OK
      */
-    ListError_t (*traverse)(struct List* this, ListError_t (*func)(void* data));
+    ListError_t (*traverse)(struct List* ctx, ListError_t (*func)(void* data));
 
     /**
      * @brief Destroy this instance of List_t and free used resources
-     * @param[in]  this  Pointer to the pointer to the Linked List instance
-     * @return LIST_ERR_OK on success, LIST_ERR_MULTITHREAD_ISSUE or LIST_ERR_NULL_ARGUMENT otherwise
+     * @param[in]  ctx  Pointer to the pointer to the Linked List instance
+     * @return LIST_ERR_OK on success, LIST_ERR_PTHREAD_ISSUE or LIST_ERR_NULL_ARGUMENT otherwise
      */
-    ListError_t (*destroy)(struct List** this);
+    ListError_t (*destroy)(struct List** ctx);
 } List_t;
 
 /**
