@@ -35,7 +35,7 @@
             const char* filename = strrchr(__FILE__, '/');                               \
             filename = filename ? filename + 1 : __FILE__;                               \
             long tid = GET_THREAD_ID();                                                  \
-            printf("%s %s [TID:%ld] %s:%d: ", time_str, level, tid, filename, __LINE__); \
+            printf("%s [TID:%ld] %s %s:%d: ", time_str, tid, level, filename, __LINE__); \
             printf((msg), ##__VA_ARGS__);                                                \
             printf("\n");                                                                \
         }                                                                                \
