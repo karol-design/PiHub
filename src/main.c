@@ -1,19 +1,24 @@
 #include <string.h> // For: strlen()
 #include <unistd.h> // For: sleep()
 
+#include "app/parser.h"
 #include "comm/network.h"
 #include "utils/log.h"
 
 void test_server();
+void test_parser();
+void test_ll();
 
 int main() {
     test_server();
+    // test_parser();
+    // test_ll();
     return 0;
 }
 
 /************* Event handlers for Server *************/
 
-void handle_client_connect(const void* ctx, const ServerClient_t client) {
+void handle_client_connect(void* ctx, const ServerClient_t client) {
     log_info("handle_client_connect called");
 
     Server_t* _ctx = (Server_t*)ctx;
@@ -35,7 +40,7 @@ void handle_client_connect(const void* ctx, const ServerClient_t client) {
     log_debug("server->broadcast called (ret: %d)", err);
 }
 
-void handle_data_received(const void* ctx, const ServerClient_t client) {
+void handle_data_received(void* ctx, const ServerClient_t client) {
     log_info("handle_data_received called");
 
     Server_t* _ctx = (Server_t*)ctx;
@@ -45,7 +50,7 @@ void handle_data_received(const void* ctx, const ServerClient_t client) {
     log_debug("server->read called (ret: %d)", err);
 }
 
-void handle_client_disconnect(const void* ctx, const ServerClient_t client) {
+void handle_client_disconnect(void* ctx, const ServerClient_t client) {
     log_info("handle_client_disconnect called");
 
     Server_t* _ctx = (Server_t*)ctx;
@@ -55,7 +60,7 @@ void handle_client_disconnect(const void* ctx, const ServerClient_t client) {
     log_debug("server->broadcast called (ret: %d)", err);
 }
 
-void handle_server_failure(const void* ctx, const ServerError_t err) {
+void handle_server_failure(void* ctx, const ServerError_t err) {
     Server_t* _ctx = (Server_t*)ctx;
     log_info("handle_server_failure called with error: %d", err);
     log_info("attempting to restart the server");
@@ -69,7 +74,116 @@ void handle_server_failure(const void* ctx, const ServerError_t err) {
     log_debug("server->run called (ret: %d)", err);
 }
 
+/************* Event handlers for Parser *************/
+void handle_gpio_set(char* argv, uint32_t argc) {
+    log_info("handle_gpio_set called");
+
+    for(uint32_t arg = 0; (arg < argc) && (arg < PARSER_MAX_ARGS); arg++) {
+        if(strnlen(argv + (arg * PARSER_ARG_MAX_SIZE), PARSER_ARG_MAX_SIZE) < PARSER_ARG_MAX_SIZE) {
+            log_info("  arg %d: %s", arg, argv + (arg * PARSER_ARG_MAX_SIZE));
+        }
+    }
+}
+
+void handle_gpio_toggle(char* argv, uint32_t argc) {
+    log_info("handle_gpio_toggle called");
+
+    for(uint32_t arg = 0; (arg < argc) && (arg < PARSER_MAX_ARGS); arg++) {
+        if(strnlen(argv + (arg * PARSER_ARG_MAX_SIZE), PARSER_ARG_MAX_SIZE) < PARSER_ARG_MAX_SIZE) {
+            log_info("  arg %d: %s", arg, argv + (arg * PARSER_ARG_MAX_SIZE));
+        }
+    }
+}
+
+void handle_sensor_list(char* argv, uint32_t argc) {
+    log_info("handle_sensor_list called");
+
+    for(uint32_t arg = 0; (arg < argc) && (arg < PARSER_MAX_ARGS); arg++) {
+        if(strnlen(argv + (arg * PARSER_ARG_MAX_SIZE), PARSER_ARG_MAX_SIZE) < PARSER_ARG_MAX_SIZE) {
+            log_info("  arg %d: %s", arg, argv + (arg * PARSER_ARG_MAX_SIZE));
+        }
+    }
+}
+
+/************* Compare and print callbacks for List *************/
+
+int compare_data(const void* a, const void* b) {
+    return (*(int*)a - *(int*)b);
+}
+
+ListError_t print_node(void* data) {
+    printf("%d ", *(int*)data);
+    return LIST_ERR_OK;
+}
+
 /************* Functional tests *************/
+
+void test_parser() {
+    Parser_t parser;
+    ParserConfig_t cfg = { .delim = " " };
+    ParserCommandDef_t gpio_set_cmd = { .target = "gpio", .action = "set", .callback_ptr = handle_gpio_set };
+    ParserCommandDef_t gpio_toggle_cmd = { .target = "gpio", .action = "toggle", .callback_ptr = handle_gpio_toggle };
+    ParserCommandDef_t sensor_list_cmd = { .target = "sensor", .action = "list", .callback_ptr = handle_sensor_list };
+
+    ParserError_t err = parser_init(&parser, cfg);
+    log_debug("parser_init called (ret %d)", err);
+
+    err = parser.add_cmd(&parser, 0, gpio_set_cmd);
+    log_debug("parser.add_cmd called (ret %d)", err);
+
+    // Test too many args
+    err = parser.execute(&parser, "gpio set 1 2 3 4 5 6 7 8 9 10 11");
+    log_debug("parser.execute called (ret %d)", err);
+
+    // Test empty buffer
+    err = parser.execute(&parser, " ");
+    log_debug("parser.execute called (ret %d)", err);
+
+    // Test NULL ptr
+    err = parser.execute(&parser, NULL);
+    log_debug("parser.execute called (ret %d)", err);
+
+    // Test case-sensitivity
+    err = parser.execute(&parser, "GPiO SeT 0 OK");
+    log_debug("parser.execute called (ret %d)", err);
+
+    // Test unknown command
+    err = parser.execute(&parser, "GPiO SeTs 0");
+    log_debug("parser.execute called (ret %d)", err);
+
+    /* ------------------ */
+
+    err = parser.add_cmd(&parser, 1, gpio_toggle_cmd);
+    log_debug("parser.add_cmd called (ret %d)", err);
+
+    // Test case-sensitivity
+    err = parser.execute(&parser, "GPiO toGGle PIN1 OK");
+    log_debug("parser.execute called (ret %d)", err);
+
+    /* ------------------ */
+
+    err = parser.add_cmd(&parser, 2, sensor_list_cmd);
+    log_debug("parser.add_cmd called (ret %d)", err);
+
+    // Test case-sensitivity
+    err = parser.execute(&parser, "Sensor LIST S1 OK");
+    log_debug("parser.execute called (ret %d)", err);
+
+    // Test case-sensitivity
+    err = parser.execute(&parser, "GPiO toGGle PIN1 OK");
+    log_debug("parser.execute called (ret %d)", err);
+
+    /* ------------------ */
+
+    err = parser.remove_cmd(&parser, 1);
+    log_debug("parser.remove_cmd called (ret %d)", err);
+
+    // Test case-sensitivity
+    err = parser.execute(&parser, "GPiO toGGle PIN1");
+    log_debug("parser.execute called (ret %d)", err);
+
+    parser.deinit(&parser);
+}
 
 void test_server() {
     ServerCallbackList_t server_cb_list = { .on_client_connect = handle_client_connect,
@@ -124,4 +238,64 @@ void test_server() {
     log_info("server->destroy called (ret: %d)", err);
 
     sleep(5);
+}
+
+void test_ll() {
+    int data = 12;
+    int *tmp, *data_ptr = &data;
+
+    // Test creating the ll and ops on empty list
+    List_t ll;
+    log_info("llist_init called and returned %d", llist_init(&ll, compare_data));
+
+    log_info("traverse (print) called and returned %d", ll.traverse(&ll, print_node));
+    log_info("get_length called and returned %d", (int)ll.get_length(&ll));
+    if(ll.get_head(&ll) != NULL) {
+        log_info("get_head called and returned %d", *(int*)(ll.get_head(&ll)->data));
+        log_info("get_tail called and returned %d", *(int*)(ll.get_tail(&ll)->data));
+    }
+    log_info("--------");
+
+    // Test adding a node and operating on one node
+    log_info("push called and returned %d", ll.push(&ll, (void*)data_ptr, sizeof(int)));
+
+    log_info("traverse (print) called and returned %d", ll.traverse(&ll, print_node));
+    log_info("get_length called and returned %d", (int)ll.get_length(&ll));
+    if(ll.get_head(&ll) != NULL) {
+        log_info("get_head called and returned %d", *(int*)(ll.get_head(&ll)->data));
+        log_info("get_tail called and returned %d", *(int*)(ll.get_tail(&ll)->data));
+    }
+    log_info("--------");
+
+    // Test adding a second and third node
+    *data_ptr = 15;
+    log_info("push called and returned %d", ll.push(&ll, (void*)data_ptr, sizeof(int)));
+    *data_ptr = -12;
+    log_info("push called and returned %d", ll.push(&ll, (void*)data_ptr, sizeof(int)));
+
+    log_info("traverse (print) called and returned %d", ll.traverse(&ll, print_node));
+    log_info("get_length called and returned %d", (int)ll.get_length(&ll));
+    if(ll.get_head(&ll) != NULL) {
+        log_info("get_head called and returned %d", *(int*)(ll.get_head(&ll)->data));
+        log_info("get_tail called and returned %d", *(int*)(ll.get_tail(&ll)->data));
+    }
+    log_info("--------");
+
+    // Test removing a node
+    *data_ptr = 15;
+    log_info("remove called and returned %d", ll.remove(&ll, (void*)data_ptr));
+
+    log_info("traverse (print) called and returned %d", ll.traverse(&ll, print_node));
+    log_info("get_length called and returned %d", (int)ll.get_length(&ll));
+    if(ll.get_head(&ll) != NULL) {
+        log_info("get_head called and returned %d", *(int*)(ll.get_head(&ll)->data));
+        log_info("get_tail called and returned %d", *(int*)(ll.get_tail(&ll)->data));
+    }
+    log_info("--------");
+
+    // Test destroying a node
+    log_info("destroy called and returned %d", ll.deinit(&ll));
+    log_info("--------");
+
+    return;
 }
