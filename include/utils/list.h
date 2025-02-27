@@ -86,21 +86,19 @@ typedef struct List {
     ListError_t (*traverse)(struct List* ctx, ListError_t (*func)(void* data));
 
     /**
-     * @brief Destroy this instance of List_t and free used resources
-     * @param[in]  ctx  Pointer to the pointer to the Linked List instance
+     * @brief Deinitialize this instance of List_t and free used resources
+     * @param[in]  ctx  Pointer to the Linked List instance
      * @return LIST_ERR_OK on success, LIST_ERR_PTHREAD_ISSUE or LIST_ERR_NULL_ARGUMENT otherwise
      */
-    ListError_t (*destroy)(struct List** ctx);
+    ListError_t (*deinit)(struct List* ctx);
 } List_t;
 
 /**
- * @brief Create a new linked list
- *
- * Allocates memory for a new linked list and initializes its mutex.
- *
+ * @brief Initialize a new Linked list instance
+ * @param[in, out]  ctx  Pointer to the List instance
  * @param[in] compare Function pointer for comparing node data.
- * @return Pointer to the new List_t instance, or NULL if memory allocation fails.
+ * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT otherwise
  */
-List_t* llist_create(int (*compare)(const void* a, const void* b));
+ListError_t llist_init(List_t* ctx, int (*cmp)(const void* a, const void* b));
 
 #endif // __LIST_H__

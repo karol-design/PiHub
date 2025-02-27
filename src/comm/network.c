@@ -17,19 +17,19 @@
 #define EPOLL_CLIENT_THREAD_EVENTS 2 // Two possible events: incoming data or disconnect request
 
 typedef struct {
-    const Server_t* server;
+    Server_t* server;
     ServerClient_t client;
 } ClientHandlerArgs_t;
 
 // All functions are static; the user should use pointers from the structure
 Server_t* server_create(const ServerConfig_t cfg);
 STATIC ServerError_t server_run(Server_t* ctx);
-STATIC ServerError_t server_read(const Server_t* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
+STATIC ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
 STATIC ServerError_t server_write(const Server_t* ctx, ServerClient_t client, const uint8_t* data, const size_t len);
 STATIC ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, const size_t len);
 STATIC ServerError_t server_get_client_ip(const ServerClient_t client, char* inet_addrstr_buf);
-STATIC ListNode_t* server_get_clients(const Server_t* ctx);
-STATIC ServerError_t server_disconnect(const Server_t* ctx, const ServerClient_t client, bool no_callback);
+STATIC ListNode_t* server_get_clients(Server_t* ctx);
+STATIC ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool no_callback);
 STATIC ServerError_t server_shutdown(Server_t* ctx);
 STATIC ServerError_t server_destroy(Server_t** ctx);
 
@@ -62,7 +62,7 @@ STATIC void* server_client_handler(void* arg);
  * SERVER_ERR_PTHREAD_FAILURE / SERVER_ERR_LIST_FAILURE otherwise
  * @note This function blocks until a new connection request is present
  */
-STATIC ServerError_t server_handle_conn_request(const Server_t* ctx);
+STATIC ServerError_t server_handle_conn_request(Server_t* ctx);
 
 /**
  * @brief Callback for comparing two client file descriptors (required for Linked List)
@@ -109,7 +109,7 @@ STATIC ServerError_t server_run(Server_t* ctx) {
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_read(const Server_t* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len) {
+STATIC ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len) {
     if(!ctx || !buf || !len) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -193,15 +193,7 @@ STATIC ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, const 
         return SERVER_ERR_NULL_ARGUMENT;
     }
 
-    // Write data to the client (critical section)
-    int ret = pthread_mutex_lock(&ctx->lock);
-    if(ret != 0) {
-        log_error("pthread_mutex_lock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
-    }
-    log_debug("server lock taken");
-
-    ListNode_t* client = ctx->clients_list->get_head(ctx->clients_list);
+    ListNode_t* client = ctx->clients_list.get_head(&ctx->clients_list);
     ServerClient_t client_fd;
 
     // Write data to all clients (if any)
@@ -211,20 +203,13 @@ STATIC ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, const 
         if(err != SERVER_ERR_OK) {
             return err;
         }
-        client = client->next;
+        client = client->next; // @TODO: There should be a dedicated ll function for this protected with mutexes (risk of accessing deleted deleted node)
     }
-
-    ret = pthread_mutex_unlock(&ctx->lock);
-    if(ret != 0) {
-        log_error("pthread_mutex_unlock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
-    }
-    log_debug("server lock released");
 
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_disconnect(const Server_t* ctx, const ServerClient_t client, bool no_callback) {
+STATIC ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool no_callback) {
     if(!ctx) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -237,7 +222,7 @@ STATIC ServerError_t server_disconnect(const Server_t* ctx, const ServerClient_t
         return SERVER_ERR_EVENTFD_FAILURE;
     }
 
-    ListError_t err = ctx->clients_list->remove(ctx->clients_list, &client);
+    ListError_t err = ctx->clients_list.remove(&ctx->clients_list, &client);
     if(err != LIST_ERR_OK) {
         log_error("failed to remove the client from the clients_list (err: %d)", err);
         return SERVER_ERR_LLIST_FAILURE;
@@ -264,7 +249,7 @@ STATIC ServerError_t server_shutdown(Server_t* ctx) {
     }
     log_debug("server lock taken");
 
-    ListNode_t* node = ctx->clients_list->get_head(ctx->clients_list);
+    ListNode_t* node = ctx->clients_list.get_head(&ctx->clients_list);
     ServerError_t err = SERVER_ERR_OK;
     ServerClient_t* client;
 
@@ -311,7 +296,7 @@ STATIC ServerError_t server_destroy(Server_t** ctx) {
     }
     log_debug("server lock taken");
 
-    ListError_t err = (*ctx)->clients_list->destroy(&((*ctx)->clients_list));
+    ListError_t err = (*ctx)->clients_list.deinit(&((*ctx)->clients_list));
     if(err != LIST_ERR_OK) {
         log_error("failed to destroy linked list with client FDs (llist_destroy() returned: %d)", err);
         return SERVER_ERR_LLIST_FAILURE;
@@ -364,17 +349,17 @@ STATIC ServerError_t server_get_client_ip(const ServerClient_t client, char* ine
     }
 
     // If the addr was retrieved and converted properly copy it to the output buffer
-    memmove(inet_addrstr_, ip_addr_str, INET_ADDRSTRLEN);
+    memmove(inet_addrstr_, ip_addr_str, sizeof(ip_addr_str));
 
     return SERVER_ERR_OK;
 }
 
-STATIC ListNode_t* server_get_clients(const Server_t* ctx) {
+STATIC ListNode_t* server_get_clients(Server_t* ctx) {
     if(!ctx) {
         return NULL;
     }
 
-    return ctx->clients_list->get_head(ctx->clients_list);
+    return ctx->clients_list.get_head(&ctx->clients_list);
 }
 
 STATIC ServerError_t server_create_socket(const char* port, int* fd) {
@@ -511,7 +496,7 @@ STATIC void* server_client_handler(void* arg) {
     }
 
     ServerClient_t client = ((ClientHandlerArgs_t*)arg)->client;
-    const Server_t* server = ((ClientHandlerArgs_t*)arg)->server;
+    Server_t* server = ((ClientHandlerArgs_t*)arg)->server;
 
     // Initialise epoll that will monitor the client file descriptor (required, since read is handled in separate function)
     struct epoll_event ev, events[2]; // Max two events are expected at a time (socket fd and disconnect event fd)
@@ -587,7 +572,7 @@ STATIC int compare_client_fd(const void* a, const void* b) {
     return (*(int*)a - *(int*)b);
 }
 
-STATIC ServerError_t server_handle_conn_request(const Server_t* ctx) {
+STATIC ServerError_t server_handle_conn_request(Server_t* ctx) {
     if(!ctx) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -602,7 +587,7 @@ STATIC ServerError_t server_handle_conn_request(const Server_t* ctx) {
     }
 
     // Check if the new client request can be accepted and reject (close) if there is no more space for new clients
-    if(ctx->clients_list->get_length(ctx->clients_list) >= ctx->cfg.max_clients) {
+    if(ctx->clients_list.get_length(&ctx->clients_list) >= ctx->cfg.max_clients) {
         int err = close(client_fd);
         if(err == -1) {
             log_error("close() returned: -1 (err: %s)", strerror(errno));
@@ -639,7 +624,7 @@ STATIC ServerError_t server_handle_conn_request(const Server_t* ctx) {
     }
 
     // Add a new client to clients_list
-    ListError_t err = ctx->clients_list->push(ctx->clients_list, &client, sizeof(ServerClient_t));
+    ListError_t err = ctx->clients_list.push(&ctx->clients_list, &client, sizeof(ServerClient_t));
     if(err != LIST_ERR_OK) {
         log_error("failed to add a new client fd to the clients_fd_list, llist_push returned %d", err);
         return SERVER_ERR_LLIST_FAILURE;
@@ -679,12 +664,12 @@ Server_t* server_create(const ServerConfig_t cfg) {
     // Initialize mutex for protecting server-related critical sections
     pthread_mutex_init(&server->lock, NULL);
 
-    /* Populate data in the struct (cfg, fd), create a llist for clients and assign function pointers */
+    // Populate data in the struct (cfg, fd), create a llist for clients and assign function pointers
     server->cfg = cfg;
     server->fd = fd;
-    server->clients_list = llist_create(compare_client_fd); // @TODO: this can return NULL, check before assigning
-    if(server->clients_list == NULL) {
-        log_error("llist_create() returned NULL when creating new clients list");
+    ListError_t ret = llist_init(&server->clients_list, compare_client_fd);
+    if(ret != LIST_ERR_OK) {
+        log_error("llist_init() returned %d when initializing new clients list", ret);
         free(server);
         server = NULL;
         return NULL;

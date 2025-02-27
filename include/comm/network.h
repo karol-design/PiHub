@@ -5,10 +5,11 @@
  * @note Use server_create(), server->run(), server->shutdown() and server->destroy(). Use read(), write(), broadcast(),
  * disconnect(), get_clients() and get_client_ip() to mange active clients (incl. I/O) [this part of the API is thread-safe].
  *
- * Additional control is provided via callbacks for events such as: client_connect (server listening thread),
- * data_received & client_disconnect (client worker thread) and server_failure (server listening thread OR client worker thread).
+ * Additional control is provided via callbacks for events such as: client_connect (called by: server listening thread),
+ * data_received & client_disconnect (called by: client worker thread) and server_failure (called by: server listening thread
+ * OR client worker thread).
  *
- * @note Multithreading: This component creates a new thread for managing the server (e.g. shutdown requests) and listening
+ * @note Multithreading: This component creates one thread for server control (e.g. shutdown requests) and for listening
  * to incomming data. A worker thread is also created for each new client. [no. of threads per instance = 1 + clients_count]
  */
 
@@ -59,10 +60,10 @@ typedef struct {
  * @brief List of callback pointers for key server events
  */
 typedef struct {
-    void (*on_client_connect)(const void* ctx, const ServerClient_t client);
-    void (*on_data_received)(const void* ctx, const ServerClient_t client);
-    void (*on_client_disconnect)(const void* ctx, const ServerClient_t client);
-    void (*on_server_failure)(const void* ctx, const ServerError_t err);
+    void (*on_client_connect)(void* ctx, const ServerClient_t client);
+    void (*on_data_received)(void* ctx, const ServerClient_t client);
+    void (*on_client_disconnect)(void* ctx, const ServerClient_t client);
+    void (*on_server_failure)(void* ctx, const ServerError_t err);
 } ServerCallbackList_t;
 
 /**
@@ -87,7 +88,7 @@ typedef struct {
 typedef struct Server {
     int32_t fd;                 // Listening socket file descriptor
     ServerConfig_t cfg;         // Server config including port & callbacks
-    List_t* clients_list;       // Pointer to a linked list with handles for active clients
+    List_t clients_list;        // Linked list with handles for active clients
     pthread_mutex_t lock;       // Lock for server-related critical sections
     int shutdown_eventfd;       // Server's shutdown event file descriptor
     pthread_t listening_thread; // Server's listening thread ID
@@ -109,8 +110,7 @@ typedef struct Server {
      * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_CLIENT_DISCONNECTED otherwise
      * @note This function terminates the calling thread if the client disconnected
      */
-    ServerError_t (
-    *read)(const struct Server* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
+    ServerError_t (*read)(struct Server* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
 
     /**
      * @brief Send data to the client
@@ -145,7 +145,7 @@ typedef struct Server {
      * @param[in]  ctx  Pointer to the Server instance
      * @return Head of LL with ServerClient_t structs on success, NULL if empty or on error
      */
-    ListNode_t* (*get_clients)(const struct Server* ctx);
+    ListNode_t* (*get_clients)(struct Server* ctx);
 
     /**
      * @brief Disconnect a client
@@ -154,7 +154,7 @@ typedef struct Server {
      * @param[in]  no_disconnect  Flag indicating whether on_disconnect callback should be invoked (can cause deadlock, e.g. when called by shutdown())
      * @return SERVER_ERR_OK on success, SERVER_ERR_NET_FAILURE otherwise
      */
-    ServerError_t (*disconnect)(const struct Server* ctx, const ServerClient_t client, bool no_callback);
+    ServerError_t (*disconnect)(struct Server* ctx, const ServerClient_t client, bool no_callback);
 
     /**
      * @brief Disconnect all clients and request the listening thread to exit via eventfd
@@ -174,8 +174,8 @@ typedef struct Server {
 
 /**
  * @brief Create a new server instance
- * @param[in]  cfg  Ptr to the configuration structure
- * @return SERVER_ERR_OK if succesful, SERVER_ERR_INIT_FAILURE otherwise
+ * @param[in]  cfg  Configuration structure
+ * @return Pointer to a new server instance on success, NULL otherwise
  */
 Server_t* server_create(const ServerConfig_t cfg);
 

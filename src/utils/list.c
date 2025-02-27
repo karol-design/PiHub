@@ -11,7 +11,7 @@ ListNode_t* llist_get_tail(List_t* ctx);
 int32_t llist_get_length(List_t* ctx);
 ListError_t llist_remove(List_t* ctx, const void* data);
 ListError_t llist_traverse(List_t* ctx, ListError_t (*func)(void* data));
-ListError_t llist_destroy(List_t** ctx);
+ListError_t llist_deinit(List_t* ctx);
 
 STATIC inline void llist_init_functions(List_t* ll) {
     ll->push = llist_push;
@@ -20,30 +20,7 @@ STATIC inline void llist_init_functions(List_t* ll) {
     ll->get_length = llist_get_length;
     ll->remove = llist_remove;
     ll->traverse = llist_traverse;
-    ll->destroy = llist_destroy;
-}
-
-List_t* llist_create(int (*cmp)(const void* a, const void* b)) {
-    if(!cmp) {
-        log_error("NULL ptr provided to llist_create");
-        return NULL;
-    }
-
-    List_t* ll = (List_t*)malloc(sizeof(List_t));
-    if(!ll) {
-        log_error("malloc() returned NULL on new List_t instance creation");
-        return NULL;
-    }
-
-    /* Populate data in the struct (cfg) and assign function pointers */
-    ll->head = NULL;
-    ll->compare_data = cmp;
-    llist_init_functions(ll);
-
-    // Initialize mutex for protecting ll-related critical sections
-    pthread_mutex_init(&ll->lock, NULL);
-
-    return ll;
+    ll->deinit = llist_deinit;
 }
 
 ListError_t llist_push(List_t* ctx, void* data, size_t length) {
@@ -261,21 +238,21 @@ ListError_t llist_traverse(List_t* ctx, ListError_t (*func)(void* data)) {
     return err;
 }
 
-ListError_t llist_destroy(List_t** ctx) {
-    if(!ctx || !*ctx) {
+ListError_t llist_deinit(List_t* ctx) {
+    if(!ctx) {
         log_error("NULL ptr provided to llist_destroy");
         return LIST_ERR_NULL_ARGUMENT;
     }
 
-    int ret = pthread_mutex_lock(&(*ctx)->lock);
+    int ret = pthread_mutex_lock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
         return LIST_ERR_PTHREAD_ISSUE;
     }
 
     // Free the memory allocated for each node (if the list is not empty)
-    if((*ctx)->head != NULL) {
-        for(ListNode_t* node = (*ctx)->head; node != NULL;) {
+    if(ctx->head != NULL) {
+        for(ListNode_t* node = ctx->head; node != NULL;) {
             ListNode_t* next_node = node->next;
             free(node->data);
             free(node);
@@ -283,7 +260,7 @@ ListError_t llist_destroy(List_t** ctx) {
         }
     }
 
-    ret = pthread_mutex_unlock(&(*ctx)->lock);
+    ret = pthread_mutex_unlock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
         return LIST_ERR_PTHREAD_ISSUE;
@@ -291,15 +268,27 @@ ListError_t llist_destroy(List_t** ctx) {
     log_debug("llist lock released");
 
     // Destroy the lock (@TODO: Improve mutex destroy mechanism, e.g. add a global protection variable)
-    ret = pthread_mutex_destroy(&(*ctx)->lock);
+    ret = pthread_mutex_destroy(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_destroy() returned %d", ret);
         return LIST_ERR_PTHREAD_ISSUE;
     }
 
-    // Free the memory allocated for this List_t instance
-    free(*ctx);
-    *ctx = NULL;
+    return LIST_ERR_OK;
+}
+
+ListError_t llist_init(List_t* ctx, int (*cmp)(const void* a, const void* b)) {
+    if(!cmp) {
+        return LIST_ERR_NULL_ARGUMENT;
+    }
+
+    /* Populate data in the struct (cfg) and assign function pointers */
+    ctx->head = NULL;
+    ctx->compare_data = cmp;
+    llist_init_functions(ctx);
+
+    // Initialize mutex for protecting ll-related critical sections
+    pthread_mutex_init(&ctx->lock, NULL);
 
     return LIST_ERR_OK;
 }
