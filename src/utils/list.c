@@ -265,6 +265,9 @@ STATIC ListError_t llist_deinit(List_t* ctx) {
         return LIST_ERR_PTHREAD_FAILURE;
     }
 
+    // Zero-out the List_t struct on deinit
+    memset(ctx, 0, sizeof(List_t));
+
     return LIST_ERR_OK;
 }
 
@@ -290,6 +293,6 @@ ListError_t llist_init(List_t* ctx, int (*cmp)(const void* a, const void* b)) {
         log_error("pthread_mutex_init() returned %d", err);
         return LIST_ERR_PTHREAD_FAILURE;
     }
-    
+
     return LIST_ERR_OK;
 }
