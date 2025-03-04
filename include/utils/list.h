@@ -19,7 +19,7 @@ typedef enum {
     LIST_ERR_NULL_ARGUMENT,      /**< Error: NULL pointer passed as argument */
     LIST_ERR_MALLOC_FAILURE,     /**< Error: Dynamic memory allocation failed */
     LIST_ERR_INCORRECT_ARGUMENT, /**< Error: Incorrect argument provided */
-    LIST_ERR_PTHREAD_ISSUE,      /**< Error: Thread-safety related issue */
+    LIST_ERR_PTHREAD_FAILURE,    /**< Error: Thread-safety related issue */
     LIST_ERR_GENERIC             /**< Error: Generic error */
 } ListError_t;
 
@@ -72,7 +72,7 @@ typedef struct List {
      * @brief Remove the first node whose data is equal to 'data'
      * @param[in]  ctx  Pointer to the Linked List instance
      * @param[in]  data  Pointer to data to look for
-     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_PTHREAD_ISSUE otherwise
+     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_PTHREAD_FAILURE otherwise
      */
     ListError_t (*remove)(struct List* ctx, const void* data);
 
@@ -80,7 +80,7 @@ typedef struct List {
      * @brief Traverse through all nodes and apply func to the data of each one
      * @param[in]  ctx  Pointer to the Linked List instance
      * @param[in]  func  Pointer to function that should be called for each node
-     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_PTHREAD_ISSUE otherwise
+     * @return LIST_ERR_OK on success, LIST_ERR_NULL_ARGUMENT or LIST_ERR_PTHREAD_FAILURE otherwise
      * @note This function returns if at any point func() does not return LIST_ERR_OK
      */
     ListError_t (*traverse)(struct List* ctx, ListError_t (*func)(void* data));
@@ -88,7 +88,7 @@ typedef struct List {
     /**
      * @brief Deinitialize this instance of List_t and free used resources
      * @param[in]  ctx  Pointer to the Linked List instance
-     * @return LIST_ERR_OK on success, LIST_ERR_PTHREAD_ISSUE or LIST_ERR_NULL_ARGUMENT otherwise
+     * @return LIST_ERR_OK on success, LIST_ERR_PTHREAD_FAILURE or LIST_ERR_NULL_ARGUMENT otherwise
      */
     ListError_t (*deinit)(struct List* ctx);
 } List_t;

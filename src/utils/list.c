@@ -5,25 +5,16 @@
 #include "utils/common.h"
 #include "utils/log.h"
 
-ListError_t llist_push(List_t* ctx, void* data, size_t length);
-ListNode_t* llist_get_head(List_t* ctx);
-ListNode_t* llist_get_tail(List_t* ctx);
-int32_t llist_get_length(List_t* ctx);
-ListError_t llist_remove(List_t* ctx, const void* data);
-ListError_t llist_traverse(List_t* ctx, ListError_t (*func)(void* data));
-ListError_t llist_deinit(List_t* ctx);
+STATIC ListError_t llist_push(List_t* ctx, void* data, size_t length);
+STATIC ListNode_t* llist_get_head(List_t* ctx);
+STATIC ListNode_t* llist_get_tail(List_t* ctx);
+STATIC int32_t llist_get_length(List_t* ctx);
+STATIC ListError_t llist_remove(List_t* ctx, const void* data);
+STATIC ListError_t llist_traverse(List_t* ctx, ListError_t (*func)(void* data));
+STATIC ListError_t llist_deinit(List_t* ctx);
 
-STATIC inline void llist_init_functions(List_t* ll) {
-    ll->push = llist_push;
-    ll->get_head = llist_get_head;
-    ll->get_tail = llist_get_tail;
-    ll->get_length = llist_get_length;
-    ll->remove = llist_remove;
-    ll->traverse = llist_traverse;
-    ll->deinit = llist_deinit;
-}
 
-ListError_t llist_push(List_t* ctx, void* data, size_t length) {
+STATIC ListError_t llist_push(List_t* ctx, void* data, size_t length) {
     if(!ctx || !data) {
         log_error("NULL ptr provided to llist_push");
         return LIST_ERR_NULL_ARGUMENT;
@@ -50,7 +41,7 @@ ListError_t llist_push(List_t* ctx, void* data, size_t length) {
     int ret = pthread_mutex_lock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return LIST_ERR_PTHREAD_FAILURE;
     }
     log_debug("llist lock taken");
 
@@ -64,14 +55,14 @@ ListError_t llist_push(List_t* ctx, void* data, size_t length) {
     ret = pthread_mutex_unlock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return LIST_ERR_PTHREAD_FAILURE;
     }
     log_debug("llist lock released");
 
     return LIST_ERR_OK;
 }
 
-ListNode_t* llist_get_head(List_t* ctx) {
+STATIC ListNode_t* llist_get_head(List_t* ctx) {
     if(!ctx) {
         log_error("NULL ptr provided to llist_get_head");
         return NULL;
@@ -95,7 +86,7 @@ ListNode_t* llist_get_head(List_t* ctx) {
     return head;
 }
 
-ListNode_t* llist_get_tail(List_t* ctx) {
+STATIC ListNode_t* llist_get_tail(List_t* ctx) {
     if(!ctx) {
         log_error("NULL ptr provided to llist_get_tail");
         return NULL;
@@ -129,7 +120,7 @@ ListNode_t* llist_get_tail(List_t* ctx) {
     return tail;
 }
 
-int32_t llist_get_length(List_t* ctx) {
+STATIC int32_t llist_get_length(List_t* ctx) {
     if(!ctx) {
         log_error("NULL ptr provided to llist_get_length");
         return -1;
@@ -156,7 +147,7 @@ int32_t llist_get_length(List_t* ctx) {
     return node_count;
 }
 
-ListError_t llist_remove(List_t* ctx, const void* data) {
+STATIC ListError_t llist_remove(List_t* ctx, const void* data) {
     if(!ctx) {
         log_error("NULL ptr provided to llist_remove");
         return LIST_ERR_NULL_ARGUMENT;
@@ -166,7 +157,7 @@ ListError_t llist_remove(List_t* ctx, const void* data) {
     int ret = pthread_mutex_lock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return LIST_ERR_PTHREAD_FAILURE;
     }
     log_debug("llist lock taken");
 
@@ -199,14 +190,14 @@ ListError_t llist_remove(List_t* ctx, const void* data) {
     ret = pthread_mutex_unlock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return LIST_ERR_PTHREAD_FAILURE;
     }
     log_debug("llist lock released");
 
     return LIST_ERR_OK;
 }
 
-ListError_t llist_traverse(List_t* ctx, ListError_t (*func)(void* data)) {
+STATIC ListError_t llist_traverse(List_t* ctx, ListError_t (*func)(void* data)) {
     if(!ctx) {
         log_error("NULL ptr provided to llist_traverse");
         return LIST_ERR_NULL_ARGUMENT;
@@ -217,7 +208,7 @@ ListError_t llist_traverse(List_t* ctx, ListError_t (*func)(void* data)) {
     int ret = pthread_mutex_lock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return LIST_ERR_PTHREAD_FAILURE;
     }
     log_debug("llist lock taken");
 
@@ -231,14 +222,14 @@ ListError_t llist_traverse(List_t* ctx, ListError_t (*func)(void* data)) {
     ret = pthread_mutex_unlock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return LIST_ERR_PTHREAD_FAILURE;
     }
     log_debug("llist lock released");
 
     return err;
 }
 
-ListError_t llist_deinit(List_t* ctx) {
+STATIC ListError_t llist_deinit(List_t* ctx) {
     if(!ctx) {
         log_error("NULL ptr provided to llist_destroy");
         return LIST_ERR_NULL_ARGUMENT;
@@ -247,7 +238,7 @@ ListError_t llist_deinit(List_t* ctx) {
     int ret = pthread_mutex_lock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return LIST_ERR_PTHREAD_FAILURE;
     }
 
     // Free the memory allocated for each node (if the list is not empty)
@@ -263,7 +254,7 @@ ListError_t llist_deinit(List_t* ctx) {
     ret = pthread_mutex_unlock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return LIST_ERR_PTHREAD_FAILURE;
     }
     log_debug("llist lock released");
 
@@ -271,24 +262,34 @@ ListError_t llist_deinit(List_t* ctx) {
     ret = pthread_mutex_destroy(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_destroy() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return LIST_ERR_PTHREAD_FAILURE;
     }
 
     return LIST_ERR_OK;
 }
 
 ListError_t llist_init(List_t* ctx, int (*cmp)(const void* a, const void* b)) {
-    if(!cmp) {
+    if(!cmp || !ctx) {
         return LIST_ERR_NULL_ARGUMENT;
     }
 
     /* Populate data in the struct (cfg) and assign function pointers */
     ctx->head = NULL;
     ctx->compare_data = cmp;
-    llist_init_functions(ctx);
+    ctx->push = llist_push;
+    ctx->get_head = llist_get_head;
+    ctx->get_tail = llist_get_tail;
+    ctx->get_length = llist_get_length;
+    ctx->remove = llist_remove;
+    ctx->traverse = llist_traverse;
+    ctx->deinit = llist_deinit;
 
     // Initialize mutex for protecting ll-related critical sections
-    pthread_mutex_init(&ctx->lock, NULL);
-
+    int err = pthread_mutex_init(&ctx->lock, NULL);
+    if(err != 0) {
+        log_error("pthread_mutex_init() returned %d", err);
+        return LIST_ERR_PTHREAD_FAILURE;
+    }
+    
     return LIST_ERR_OK;
 }

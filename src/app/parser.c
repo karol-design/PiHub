@@ -231,7 +231,11 @@ ParserError_t parser_init(Parser_t* ctx, const ParserConfig_t cfg) {
     memset(ctx, 0, sizeof(Parser_t));
 
     // Initialize mutex for protecting parser-related critical sections
-    pthread_mutex_init(&ctx->lock, NULL);
+    int ret = pthread_mutex_init(&ctx->lock, NULL);
+    if(ret != 0) {
+        log_error("pthread_mutex_init() returned %d", ret);
+        return PARSER_ERR_PTHREAD_FAILURE;
+    }
 
     // Populate data in the struct (cfg) and assign function pointers
     ctx->cfg = cfg;

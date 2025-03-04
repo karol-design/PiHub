@@ -118,7 +118,7 @@ STATIC ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* 
     int ret = pthread_mutex_lock(&client.lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return SERVER_ERR_PTHREAD_FAILURE;
     }
     log_debug("client lock taken");
 
@@ -144,7 +144,7 @@ STATIC ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* 
     ret = pthread_mutex_unlock(&client.lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return SERVER_ERR_PTHREAD_FAILURE;
     }
     log_debug("client lock released");
 
@@ -162,7 +162,7 @@ STATIC ServerError_t server_write(const Server_t* ctx, ServerClient_t client, co
     int ret = pthread_mutex_lock(&client.lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return SERVER_ERR_PTHREAD_FAILURE;
     }
     log_debug("client lock taken");
 
@@ -179,7 +179,7 @@ STATIC ServerError_t server_write(const Server_t* ctx, ServerClient_t client, co
     ret = pthread_mutex_unlock(&client.lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return SERVER_ERR_PTHREAD_FAILURE;
     }
     log_debug("client lock released");
 
@@ -245,7 +245,7 @@ STATIC ServerError_t server_shutdown(Server_t* ctx) {
     int ret = pthread_mutex_lock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return SERVER_ERR_PTHREAD_FAILURE;
     }
     log_debug("server lock taken");
 
@@ -274,7 +274,7 @@ STATIC ServerError_t server_shutdown(Server_t* ctx) {
     ret = pthread_mutex_unlock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return SERVER_ERR_PTHREAD_FAILURE;
     }
     log_debug("server lock released");
 
@@ -292,7 +292,7 @@ STATIC ServerError_t server_destroy(Server_t** ctx) {
     int ret = pthread_mutex_lock(&(*ctx)->lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return SERVER_ERR_PTHREAD_FAILURE;
     }
     log_debug("server lock taken");
 
@@ -305,7 +305,7 @@ STATIC ServerError_t server_destroy(Server_t** ctx) {
     ret = pthread_mutex_unlock(&(*ctx)->lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
-        return LIST_ERR_PTHREAD_ISSUE;
+        return SERVER_ERR_PTHREAD_FAILURE;
     }
     log_debug("server lock released");
 
@@ -601,7 +601,11 @@ STATIC ServerError_t server_handle_conn_request(Server_t* ctx) {
     ServerClient_t client = { .fd = client_fd };
 
     // Initialize mutex for protecting client-related critical sections
-    pthread_mutex_init(&client.lock, NULL);
+    int ret = pthread_mutex_init(&client.lock, NULL);
+    if(ret != 0) {
+        log_error("pthread_mutex_init() returned %d", ret);
+        return SERVER_ERR_PTHREAD_FAILURE;
+    }
 
     // Create an eventfd for synchronization
     client.disconnect_eventfd = eventfd(0, EFD_NONBLOCK);
@@ -612,7 +616,7 @@ STATIC ServerError_t server_handle_conn_request(Server_t* ctx) {
 
     // Create a new working thread for the client
     ClientHandlerArgs_t args = { .client = client, .server = ctx };
-    int ret = pthread_create(&client.thread, NULL, server_client_handler, (void*)&args);
+    ret = pthread_create(&client.thread, NULL, server_client_handler, (void*)&args);
     if(ret != 0) {
         log_error("pthread_create() returned: %d", ret);
         return SERVER_ERR_PTHREAD_FAILURE;
@@ -662,7 +666,11 @@ Server_t* server_create(const ServerConfig_t cfg) {
     }
 
     // Initialize mutex for protecting server-related critical sections
-    pthread_mutex_init(&server->lock, NULL);
+    int p_err = pthread_mutex_init(&server->lock, NULL);
+    if(p_err != 0) {
+        log_error("pthread_mutex_init() returned %d", p_err);
+        return NULL;
+    }
 
     // Populate data in the struct (cfg, fd), create a llist for clients and assign function pointers
     server->cfg = cfg;

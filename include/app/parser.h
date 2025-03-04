@@ -106,7 +106,7 @@ typedef struct Parser {
  * @brief Initialize a new Parser instance
  * @param[in, out]  ctx  Pointer to the Parser instance
  * @param[in]  id  ID of the command to be removed
- * @return PARSER_ERR_OK on success, PARSER_ERR_NULL_ARG otherwise
+ * @return PARSER_ERR_OK on success, PARSER_ERR_NULL_ARG or PARSER_ERR_PTHREAD_FAILURE otherwise
  */
 ParserError_t parser_init(Parser_t* ctx, const ParserConfig_t cfg);
 
