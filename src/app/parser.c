@@ -219,7 +219,7 @@ ParserError_t parser_deinit(Parser_t* ctx) {
         return PARSER_ERR_PTHREAD_FAILURE;
     }
 
-    // Zero-out the Parser_t struct and its members on deinit
+    // Zero-out the Parser_t struct along with its members on deinit
     memset(ctx, 0, sizeof(Parser_t));
 
     return PARSER_ERR_OK;
