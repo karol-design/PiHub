@@ -98,6 +98,8 @@ ParserError_t parser_add_cmd(Parser_t* ctx, const uint32_t id, const ParserComma
         return PARSER_ERR_NULL_ARG;
     } else if(id >= PARSER_MAX_CMD_COUNT) {
         return PARSER_ERR_INVALID_ARG;
+    } else if(strlen(cmd.action) == 0 || strlen(cmd.target) == 0) {
+        return PARSER_ERR_INVALID_ARG;
     }
     ParserError_t err = PARSER_ERR_OK;
 
@@ -207,6 +209,9 @@ ParserError_t parser_execute(Parser_t* ctx, const char* buf) {
 }
 
 ParserError_t parser_deinit(Parser_t* ctx) {
+    if(!ctx) {
+        return PARSER_ERR_NULL_ARG;
+    }
     // Destroy the lock (@TODO: Improve mutex destroy mechanism, e.g. add a global protection variable)
     int ret = pthread_mutex_destroy(&ctx->lock);
     if(ret != 0) {
