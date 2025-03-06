@@ -34,13 +34,17 @@ List_t test_ll; // Test Linked List
 
 // Init Linked List and push two integers (15 and -10)
 static int llist_test_setup(void** state) {
-    llist_init(&test_ll, cmp);
+    if(llist_init(&test_ll, cmp) != LIST_ERR_OK) {
+        return -1;
+    }
     return 0;
 }
 
 // Deinit the Linked List
 static int llist_test_teardown(void** state) {
-    llist_deinit(&test_ll);
+    if(llist_deinit(&test_ll) != LIST_ERR_OK) {
+        return -1;
+    }
     return 0;
 }
 
@@ -49,13 +53,13 @@ static int llist_test_teardown(void** state) {
 /* Parameters as expected; llist_init should succeed */
 static void test_llist_init_success(void** state) {
     List_t list;
-    assert_int_equal(llist_init(&list, cmp), LIST_ERR_OK);
+    assert_int_equal(llist_init(&test_ll, cmp), LIST_ERR_OK);
 }
 
 /* NULL ctx; llist_init should fail */
 static void test_llist_init_null_ctx(void** state) {
     List_t list;
-    assert_int_equal(llist_init(&list, NULL), LIST_ERR_NULL_ARGUMENT);
+    assert_int_equal(llist_init(&test_ll, NULL), LIST_ERR_NULL_ARGUMENT);
 }
 
 /* NULL cmp pointer; llist_init should fail */
@@ -66,8 +70,8 @@ static void test_llist_init_null_cmp(void** state) {
 /* Parameters as expected; llist_deinit should succeed */
 static void test_llist_deinit_success(void** state) {
     List_t list;
-    llist_init(&list, cmp);
-    assert_int_equal(llist_deinit(&list), LIST_ERR_OK);
+    llist_init(&test_ll, cmp);
+    assert_int_equal(llist_deinit(&test_ll), LIST_ERR_OK);
 }
 
 /* NULL ctx; llist_deinit should fail */
@@ -77,10 +81,8 @@ static void test_llist_deinit_null_ctx(void** state) {
 
 /* Parameters as expected; llist_push should succeed */
 static void test_llist_push_success(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
     int data = 10;
-    assert_int_equal(llist_push(&list, &data, sizeof(data)), LIST_ERR_OK);
+    assert_int_equal(llist_push(&test_ll, &data, sizeof(data)), LIST_ERR_OK);
 }
 
 /* NULL ctx; llist_push should fail */
@@ -90,17 +92,14 @@ static void test_llist_push_null_ctx(void** state) {
 
 /* zero lenght; llist_push should fail */
 static void test_llist_push_zero_length(void** state) {
-    List_t list;
-    assert_int_equal(llist_push(&list, &list, 0), LIST_ERR_INCORRECT_ARGUMENT);
+    assert_int_equal(llist_push(&test_ll, &test_ll, 0), LIST_ERR_INCORRECT_ARGUMENT);
 }
 
 /* Parameters as expected; llist_get_head should return the first element */
 static void test_llist_get_head_success(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
     int data = 10;
-    llist_push(&list, &data, sizeof(data));
-    assert_int_equal(*(int*)llist_get_head(&list)->data, data);
+    llist_push(&test_ll, &data, sizeof(data));
+    assert_int_equal(*(int*)llist_get_head(&test_ll)->data, data);
 }
 
 /* NULL ctx; llist_get_head should return NULL */
@@ -110,19 +109,15 @@ static void test_llist_get_head_null_ctx(void** state) {
 
 /* Empty list; llist_get_head should return NULL */
 static void test_llist_get_head_empty(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
-    assert_null(llist_get_head(&list));
+    assert_null(llist_get_head(&test_ll));
 }
 
 /* Parameters as expected; llist_get_tail should return the last element */
 static void test_llist_get_tail_success(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
     int head = 10, tail = 20;
-    llist_push(&list, &head, sizeof(head));
-    llist_push(&list, &tail, sizeof(tail));
-    assert_int_equal(*(int*)llist_get_tail(&list)->data, tail);
+    llist_push(&test_ll, &head, sizeof(head));
+    llist_push(&test_ll, &tail, sizeof(tail));
+    assert_int_equal(*(int*)llist_get_tail(&test_ll)->data, tail);
 }
 
 /* NULL ctx; llist_get_tail should return NULL */
@@ -132,18 +127,14 @@ static void test_llist_get_tail_null_ctx(void** state) {
 
 /* Empty list; llist_get_tail should return NULL */
 static void test_llist_get_tail_empty(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
-    assert_null(llist_get_tail(&list));
+    assert_null(llist_get_tail(&test_ll));
 }
 
 /* Parameters as expected; llist_get_length should return correct length */
 static void test_llist_get_length_success(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
     int data = 10;
-    llist_push(&list, &data, sizeof(data));
-    assert_int_equal(llist_get_length(&list), 1);
+    llist_push(&test_ll, &data, sizeof(data));
+    assert_int_equal(llist_get_length(&test_ll), 1);
 }
 
 /* NULL ctx; llist_get_length should return -1 */
@@ -153,19 +144,15 @@ static void test_llist_get_length_null_ctx(void** state) {
 
 /* Empty list; llist_get_length should return 0 */
 static void test_llist_get_length_empty(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
-    assert_int_equal(llist_get_length(&list), 0);
+    assert_int_equal(llist_get_length(&test_ll), 0);
 }
 
 /* Parameters as expected; llist_remove should remove an existing element */
 static void test_llist_remove_success(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
     int data = 10;
-    llist_push(&list, &data, sizeof(data));
-    assert_int_equal(llist_remove(&list, &data), LIST_ERR_OK);
-    assert_int_equal(llist_get_length(&list), 0);
+    llist_push(&test_ll, &data, sizeof(data));
+    assert_int_equal(llist_remove(&test_ll, &data), LIST_ERR_OK);
+    assert_int_equal(llist_get_length(&test_ll), 0);
 }
 
 /* NULL ctx; llist_remove should fail */
@@ -176,22 +163,18 @@ static void test_llist_remove_null_ctx(void** state) {
 
 /* Removing a non-existent element; should return LIST_ERR_OK but not modify the list */
 static void test_llist_remove_nonexistent(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
     int data1 = 10, data2 = 20;
-    llist_push(&list, &data1, sizeof(data1));
-    assert_int_equal(llist_remove(&list, &data2), LIST_ERR_OK);
-    assert_int_equal(llist_get_length(&list), 1);
+    llist_push(&test_ll, &data1, sizeof(data1));
+    assert_int_equal(llist_remove(&test_ll, &data2), LIST_ERR_OK);
+    assert_int_equal(llist_get_length(&test_ll), 1);
 }
 
 /* Parameters as expected; llist_traverse should apply function to all elements */
 static void test_llist_traverse_success(void** state) {
-    List_t list;
-    llist_init(&list, cmp);
     int data = 10;
-    llist_push(&list, &data, sizeof(data));
-    llist_traverse(&list, add_one);
-    assert_int_equal(*(int*)llist_get_head(&list)->data, 11);
+    llist_push(&test_ll, &data, sizeof(data));
+    llist_traverse(&test_ll, add_one);
+    assert_int_equal(*(int*)llist_get_head(&test_ll)->data, 11);
 }
 
 /* NULL ctx; llist_traverse should fail */
@@ -201,8 +184,7 @@ static void test_llist_traverse_null_ctx(void** state) {
 
 /* NULL traverse function; llist_traverse should fail */
 static void test_llist_traverse_null_func(void** state) {
-    List_t list;
-    assert_int_equal(llist_traverse(&list, NULL), LIST_ERR_NULL_ARGUMENT);
+    assert_int_equal(llist_traverse(&test_ll, NULL), LIST_ERR_NULL_ARGUMENT);
 }
 
 /* Functional test of the llist library focused on pushing new nodes */
@@ -278,24 +260,24 @@ int run_llist_tests(void) {
         cmocka_unit_test(test_llist_init_null_cmp),
         cmocka_unit_test(test_llist_deinit_success),
         cmocka_unit_test(test_llist_deinit_null_ctx),
-        cmocka_unit_test(test_llist_push_success),
-        cmocka_unit_test(test_llist_push_null_ctx),
-        cmocka_unit_test(test_llist_push_zero_length),
-        cmocka_unit_test(test_llist_get_head_success),
-        cmocka_unit_test(test_llist_get_head_null_ctx),
-        cmocka_unit_test(test_llist_get_head_empty),
-        cmocka_unit_test(test_llist_get_tail_success),
-        cmocka_unit_test(test_llist_get_tail_null_ctx),
-        cmocka_unit_test(test_llist_get_tail_empty),
-        cmocka_unit_test(test_llist_get_length_success),
-        cmocka_unit_test(test_llist_get_length_null_ctx),
-        cmocka_unit_test(test_llist_get_length_empty),
-        cmocka_unit_test(test_llist_remove_success),
-        cmocka_unit_test(test_llist_remove_null_ctx),
-        cmocka_unit_test(test_llist_remove_nonexistent),
-        cmocka_unit_test(test_llist_traverse_success),
-        cmocka_unit_test(test_llist_traverse_null_ctx),
-        cmocka_unit_test(test_llist_traverse_null_func),
+        cmocka_unit_test_setup_teardown(test_llist_push_success, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_push_null_ctx, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_push_zero_length, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_get_head_success, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_get_head_null_ctx, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_get_head_empty, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_get_tail_success, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_get_tail_null_ctx, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_get_tail_empty, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_get_length_success, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_get_length_null_ctx, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_get_length_empty, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_remove_success, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_remove_null_ctx, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_remove_nonexistent, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_traverse_success, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_traverse_null_ctx, llist_test_setup, llist_test_teardown),
+        cmocka_unit_test_setup_teardown(test_llist_traverse_null_func, llist_test_setup, llist_test_teardown),
         cmocka_unit_test_setup_teardown(test_llist_repeated_pushes, llist_test_setup, llist_test_teardown),
         cmocka_unit_test_setup_teardown(test_llist_repeated_removes, llist_test_setup, llist_test_teardown),
     };
