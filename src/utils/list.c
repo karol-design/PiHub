@@ -18,6 +18,8 @@ STATIC ListError_t llist_push(List_t* ctx, void* data, size_t length) {
     if(!ctx || !data) {
         log_error("NULL ptr provided to llist_push");
         return LIST_ERR_NULL_ARGUMENT;
+    } else if(length <= 0) {
+        return LIST_ERR_INCORRECT_ARGUMENT;
     }
 
     // Allocate and initialize memory for a new node and for its data
@@ -198,7 +200,7 @@ STATIC ListError_t llist_remove(List_t* ctx, const void* data) {
 }
 
 STATIC ListError_t llist_traverse(List_t* ctx, ListError_t (*func)(void* data)) {
-    if(!ctx) {
+    if(!ctx || !func) {
         log_error("NULL ptr provided to llist_traverse");
         return LIST_ERR_NULL_ARGUMENT;
     }
