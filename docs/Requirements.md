@@ -1,44 +1,137 @@
-# PiHub | Smart Home Control Hub
+# 📡 PiHub | Smart Home Control Hub
 
-## Project Description
+## 📌 Project Description
 ### Objective
-Create a Raspberry Pi smart home system (C server and Python client) for remote control of home appliances (through GPIO), and querying the readings of multiple environmental sensors (temperature and humidity), all via a pre-defined set of commands (custom text-based protocol running over TCP).
+Develop a Raspberry Pi-based smart home control system with a C-based server and a Python client, enabling:
+- Remote control of home appliances via GPIO.
+- Environmental sensor data retrieval (temperature, humidity, etc.).
+- Monitoring of system parameters such as network status, uptime, and CPU temperature.
+- All via a structured, UNIX-style command interface over TCP for extensibility and automation.
 
 ### Typical high-level use case description
-A user would run a Python client script on a PC/laptop/tablet to control devices (through relays connected to RPI GPIOs) and query the temperature and humidity in various rooms where sensors are installed, as well as the current server parameters (in particular: basic network statistics, system uptime, CPU temperature).
+A user runs a Python client on a PC, laptop, or tablet to:
+- Control home appliances via relays connected to the Raspberry Pi’s GPIO.
+- Query environmental sensor readings (temperature, humidity) from multiple rooms.
+- Retrieve server operational statistics, including network status, system uptime, and CPU temperature.
 
-## Requirements
-> *Note*: Requirements are grouped into three priority tiers from the most critical [P0] to optional [P2] 
+## 📌 Requirements
+> *Note*: Requirements are grouped into three priority tiers from critical [P0] to optional [P2] 
 ### Functional Requirements
-1. [P0] The system shall allow clients to control the state of available GPIO pins (up to 10) by sending commands which specify the operation (`TURN_ON`/`TURN_OFF`) and GPIO number (e.g. `TURN_ON 10`);
-2. [P0] The system shall support querying the current temperature and humidity (`GET_TEMP`/`GET_HUM`) from any currently available environmental sensor identified in the query by a pre-defined sensor ID (e.g. `GET_TEMP S1`);
-3. [P0] The server shall respond with an acknowledgment (`OK`) within 1 second of receiving a valid command;
-4. [P0] The system shall provide error messages for invalid commands or connection issues (e.g., `INVALID CMD` or `CONN ERROR`).
-5. [P0] The server shall support a command to retrieve the status of connected sensors by their pre-defined sensor ID (e.g. `GET_STATE S1`).
-6. [P0] The system shall allow clients to disconnect gracefully by sending a `DISCONNECT` command.
-7. [P0] The system shall allow any client to shut down the server by sending a `SHUTDOWN` command.
-8. [P1] The system shall support a set of commands to retrieve the server's operational parameters, in particular: basic network statistics, system uptime or CPU temperature (e.g.`GET_NETWORK_STATS`, `GET_UPTIME`, `GET_CPU_TEMP`).
-9. [P1] The server shall log all incoming commands and their execution status, including timestamps.
-10. [P1] The commands should be customizable via a config file in which the user can overwrite default cmds.
-11. [P2] The server shall validate the connected environmental sensor`s presence and functionality during startup and notify the user of the state of the system (incl. connected sensors) in a first message after succesfull connection.
-12. [P2] The server should provide a protection mechanism against abandoned connections from the clients in form of a timeout.
-13. [P2] The server should be implemented so that it can run as a deamon in Linux environment.
-14. [P2] The server should verify all incomming connections (e.g. via password/login or key exchange)
+1. [P0] The system shall allow clients to **control GPIOs** using a Unix-style command structure (should follow format: `<target> <action [parameters]`, e.g. `gpio set 10`)
+2. [P0] The system shall support **querying the current temperature and humidity** from any currently available environmental sensor using commands that follow the same format;
+3. [P0] The server shall **acknowledge valid commands within 1 second** of reception;
+4. [P0] The system shall provide **structured error messages** for invalid commands or connection issues;
+5. [P0] The system shall allow **querying server status** (including basic network statistics, system uptime, CPU temperature or sensor's status) using commands that follow the defined structure;
+6. [P0] The system shall support **graceful client disconnections** via a designated command;
+7. [P0] The system shall allow clients to **shut down the server** using a designated command;
+8. [P1] The server shall **log all incoming commands** and their execution status, including timestamps;
+9. [P1] The system shall allow **commands to be customizable** via a configuration file;
+10. [P2] The server shall **validate connected environmental sensors** at startup and notify the client of the system’s state after a successful connection;
+11. [P2] The system shall support **automatic disconnection of abandoned clients** via a timeout mechanism;
+12. [P2] The server shall be capable of **running as a daemon** on Linux;
+13. [P2] The system shall support **secure authentication** using password/login or key exchange;
 
 ### Non-Functional Requirements
-1. [P0] The system shall handle up to 5 simultaneous client connections without degradation in response time.
-2. [P0] The system shall implement a text-based application-layer protocol (as defined in this document) designed to run over TCP.
-2. [P0] The server shall operate reliably on a Raspberry Pi Zero 2W with default Raspberry Pi OS (32-bit version, Lite or Full).
-3. [P0] The client script shall operate reliably on any device that supports Python 3.6 or higher and is connected to the network (e.g., Windows, Linux, or macOS).
-4. [P0] The server shall support up to 5 environmental sensors connected through I2C or SPI (e.g., DHT22, BME280, or similar).
-5. [P0] The system's response time for any command shall not exceed 2 seconds under typical load conditions.
-6. [P0] The server app shall be modular, allowing additional GPIO devices or sensors to be integrated with minimal code changes - in particular, a virtual interface should be provided for each sensor that would allow to integrate a new sensor without making any modifications into current server's code components.
-7. [P1] The server app shall provide logs in a standard format (e.g., JSON or plain text) that can be exported or analyzed offline.
-8. [P1] The server app shall provide robust error handling, ensuring that invalid or incomplete commands do not crash the server.
-9. [P2] For improved security, a deamon user should be created on server installation, which would have limited rights (e.g. no default shell access) and would run the server's deamon. In addition "append only" mode should be specified for log files.
-10. [P2] In case the server is implemented as a deamon an install/uninstall script should be provided as well.
+1. [P0] The system shall handle **up to 5 simultaneous clients** without response time degradation;
+2. [P0] The system shall implement a **structured, text-based protocol over TCP**;
+2. [P0] The server shall **run reliably on a Raspberry Pi Zero 2W** with Raspberry Pi OS;
+3. [P0] The client shall run on **any device supporting Python 3.6+** (Windows, Linux, macOS);
+4. [P0] The server shall support **up to 5 environmental sensors via I2C or SPI** (e.g., DHT22, BME280);
+5. [P0] The system shall guarantee a **maximum response time of 2 seconds under normal load** conditions;
+6. [P0] The server app shall be **modular**, allowing additional GPIO devices or sensors to be integrated with **minimal code changes** - in particular, a virtual sensor interface should be provided allowing integration of new sensor without making any modifications to the rest of the code.
+7. [P1] The server shall **log all operations in a standardized format** (e.g., JSON, plain text);
+8. [P1] The server shall include **robust error handling** to prevent crashes due to malformed commands;
+9. [P2] For improved security, if deployed as a daemon, the server shall **run under a dedicated user account** with limited privileges (e.g. no shell access, "append only" mode on logs)
+10. [P2] If implemented as a daemon, an **installation/uninstallation script** shall be provided;
 
-## Architecture
+## 📌 PiHub Protocol Definition
+
+> **This section defines the communication protocol used by PiHub, ensuring a structured, Unix-style command interface over TCP.**
+
+### **General Command Structure**
+
+```
+<target> <action> [parameters]
+```
+- `target`: The resource being acted upon (e.g., `gpio`, `sensor`, `server`, `client`).
+- `action`: The operation being performed (e.g., `set`, `get`, `status`, `disconnect`, `shutdown`).
+- `parameters`: Optional parameters (e.g., GPIO pin number, sensor ID, GPIO status to be set).
+
+**note**: command parser should be case-insensitive and *parameters* should be commutative (i.e. `gpio set 10 on` and `GPIO set ON 10` should produce the same result)
+
+---
+
+### **1️⃣ Device Control (GPIO, Relays, Actuators)**
+
+| Command                   | Description                           | Example           | Priority   |
+| ------------------------- | ------------------------------------- | ----------------- | ---------- |
+| `gpio set <on\off> <PIN>` | Set GPIO state.                       | `gpio set 10 on`  | P0         |
+| `gpio toggle <PIN>`       | Toggle GPIO state.                    | `gpio toggle 5`   | P0         |
+| `gpio get [PIN]`          | Get GPIO state (or all if omitted).   | `gpio get 5`      | P0         |
+---
+
+### **2️⃣ Sensor Queries**
+
+| Command                       | Description                               | Example              | Priority   |
+| ----------------------------- | ----------------------------------------- | -------------------- | ---------- |
+| `sensor list`                 | List available sensors and their IDs.     | `sensor list`        | P0         |
+| `sensor get <SENSOR_ID> temp` | Get temperature.                          | `sensor get S1 temp` | P0         |
+| `sensor get <SENSOR_ID> hum`  | Get humidity.                             | `sensor get S1 hum`  | P0         |
+---
+
+### **3️⃣ Server & System Monitoring**
+
+| Command         | Description             | Example         | Priority   |
+| --------------- | ----------------------- | --------------- | ---------- |
+| `server status` | Get system health.      | `server status` | P0         |
+| `server uptime` | Get system uptime.      | `server uptime` | P0         |
+| `server temp`   | Get CPU temperature.    | `server temp`   | P0         |
+| `server net`    | Get network statistics. | `server net`    | P2         |
+---
+
+### **4️⃣ Connection & Client Management**
+
+| Command             | Description           | Example             | Priority   |
+| ------------------- | --------------------- | ------------------- | ---------- |
+| `client disconnect` | Disconnect client.    | `client disconnect` | P0         |
+| `server shutdown`   | Shut down the server. | `server shutdown`   | P0         |
+---
+
+### **5️⃣ Configuration & Security**
+
+| Command                    | Description           | Example                      | Priority   |
+| -------------------------- | --------------------- | ---------------------------- | ---------- |
+| `config reload`            | Reload configuration. | `config reload`              | P2         |
+| `auth login <USER> <PASS>` | Authenticate user.    | `auth login admin mypass123` | P2         |
+| `auth logout`              | Log out user.         | `auth logout`                | P2         |
+---
+
+### **Notes**
+
+- Commands follow a **strict Unix-style format**: `<target> <action> [parameters]`.
+- Responses from the server should be **structured and machine-readable**.
+- New commands can be added following the same structured format to maintain consistency.
+- The system should handle **invalid commands gracefully** and return meaningful error messages.
+
+---
+
+### **Example Command Workflow**
+
+```
+# Turn on a smart light connected to GPIO 8
+gpio set 8 on  
+
+# Get the current temperature from sensor S1
+sensor get S1 temp  
+
+# Get system uptime
+server uptime  
+
+# Disconnect from the server
+client disconnect  
+```
+
+## 📌 Architecture
 
 ### Software stack / technologies
 | Subsystem | Environment | Language | Build system | Compiler | Test framework | Debugger | Code formatter | Static analysis | Test coverage analysis | Memory analysis |
@@ -49,7 +142,7 @@ A user would run a Python client script on a PC/laptop/tablet to control devices
 ### Server (components / src structure)
 - main (calls piHub_init(), piHub_start())
 - app: **piHub** (Application layer: configures the whole server and external hardware, run main application loop)
-- app: **cmd_parser** (Interpretter for pre-defined/custom commands: validating and interpretting commands, managing other PiHub protocol functionalities, e.g. encrytpion if used)
+- app: **parser** (Interpretter for pre-defined/custom commands: validating and interpretting commands, managing other PiHub protocol functionalities, e.g. encrytpion if used)
 - comm: **network** (TCP/IP Connection handler: initialising TCP server, listening for connections, sending / receiving data, managing connections - disconnect, shutdown)
 - hw: **gpio** (Abstraction for GPIO: initializing GPIO, configuring input/output, setting/resetting GPIOs, reading the value on GPIOs)
 - hw: **i2c** (Abstraction for I2C: initializing and configuring I2C, managing sending/receiving data)
@@ -63,7 +156,7 @@ A user would run a Python client script on a PC/laptop/tablet to control devices
 
 ### Server (Multithreading):
 One for the app (main)
-One for the Server (to monitor incomming connections)
+One for the Server (to monitor incoming connections)
 One for each client
 
 ### Client
