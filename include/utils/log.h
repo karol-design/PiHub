@@ -2,6 +2,8 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef LOGS_ENABLED
+
 #ifdef _WIN32
 #include <windows.h>
 #define GET_THREAD_ID() GetCurrentThreadId()
@@ -44,3 +46,12 @@
 #define log_debug(msg, ...) LOG_PRINT("DEBUG", LOG_LEVEL_DEBUG, msg, ##__VA_ARGS__)
 #define log_info(msg, ...) LOG_PRINT("INFO", LOG_LEVEL_INFO, msg, ##__VA_ARGS__)
 #define log_error(msg, ...) LOG_PRINT("ERROR", LOG_LEVEL_ERROR, msg, ##__VA_ARGS__)
+
+#else
+
+// Ignore all logs if disabled
+#define log_debug(msg, ...)
+#define log_info(msg, ...)
+#define log_error(msg, ...)
+
+#endif // LOGS_ENABLED
