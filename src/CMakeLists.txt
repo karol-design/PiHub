@@ -12,3 +12,6 @@ add_executable(${CMAKE_PROJECT_NAME} main.c)
 
 # Link the main executable with the static library
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE pihub_static)
+
+# Enable logs by default
+target_compile_definitions(pihub_static PRIVATE LOGS_ENABLED=1)
