@@ -22,7 +22,7 @@ typedef struct {
 } ClientHandlerArgs_t;
 
 // All functions are static; the user should use pointers from the structure
-Server_t* server_create(const ServerConfig_t cfg);
+ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg);
 STATIC ServerError_t server_run(Server_t* ctx);
 STATIC ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
 STATIC ServerError_t server_write(const Server_t* ctx, ServerClient_t client, const uint8_t* data, const size_t len);
@@ -31,7 +31,7 @@ STATIC ServerError_t server_get_client_ip(const ServerClient_t client, char* ine
 STATIC ListNode_t* server_get_clients(Server_t* ctx);
 STATIC ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool no_callback);
 STATIC ServerError_t server_shutdown(Server_t* ctx);
-STATIC ServerError_t server_destroy(Server_t** ctx);
+STATIC ServerError_t server_deinit(Server_t* ctx);
 
 /**
  * @brief Create and bind a network socket
@@ -281,28 +281,28 @@ STATIC ServerError_t server_shutdown(Server_t* ctx) {
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_destroy(Server_t** ctx) {
-    if(!ctx || !*ctx) {
+STATIC ServerError_t server_deinit(Server_t* ctx) {
+    if(!ctx) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
 
     // @TODO: Add a check if server is not running
 
     // Destroy the server (critical section)
-    int ret = pthread_mutex_lock(&(*ctx)->lock);
+    int ret = pthread_mutex_lock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_lock() returned %d", ret);
         return SERVER_ERR_PTHREAD_FAILURE;
     }
     log_debug("server lock taken");
 
-    ListError_t err = (*ctx)->clients_list.deinit(&((*ctx)->clients_list));
+    ListError_t err = ctx->clients_list.deinit(&(ctx->clients_list));
     if(err != LIST_ERR_OK) {
         log_error("failed to destroy linked list with client FDs (llist_destroy() returned: %d)", err);
         return SERVER_ERR_LLIST_FAILURE;
     }
 
-    ret = pthread_mutex_unlock(&(*ctx)->lock);
+    ret = pthread_mutex_unlock(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_unlock() returned %d", ret);
         return SERVER_ERR_PTHREAD_FAILURE;
@@ -310,15 +310,14 @@ STATIC ServerError_t server_destroy(Server_t** ctx) {
     log_debug("server lock released");
 
     // Destroy the lock (@TODO: Improve mutex destroy mechanism, e.g. add a global protection variable)
-    ret = pthread_mutex_destroy(&(*ctx)->lock);
+    ret = pthread_mutex_destroy(&ctx->lock);
     if(ret != 0) {
         log_error("pthread_mutex_destroy() returned %d", ret);
         return SERVER_ERR_PTHREAD_FAILURE;
     }
 
-    // Free the memory allocated for this server struct instance
-    free(*ctx);
-    *ctx = NULL;
+    // Zero-out the Server_t struct along with its members on deinit
+    memset(ctx, 0, sizeof(Server_t));
 
     return SERVER_ERR_OK;
 }
@@ -645,52 +644,47 @@ STATIC ServerError_t server_handle_conn_request(Server_t* ctx) {
     return SERVER_ERR_OK;
 }
 
-Server_t* server_create(const ServerConfig_t cfg) {
-    if(!cfg.port || !cfg.cb_list.on_client_connect || !cfg.cb_list.on_client_disconnect ||
+ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg) {
+    if(!ctx || !cfg.port || !cfg.cb_list.on_client_connect || !cfg.cb_list.on_client_disconnect ||
     !cfg.cb_list.on_data_received || !cfg.cb_list.on_server_failure) {
-        return NULL;
+        return SERVER_ERR_NULL_ARGUMENT;
     }
+
+    // Zero-out the Server_t struct and its members on init
+    memset(ctx, 0, sizeof(Server_t));
 
     // Create a new listening socket for the server
     int fd;
     ServerError_t err = server_create_socket(cfg.port, &fd);
     if(err != SERVER_ERR_OK) {
         log_error("server_create_socket() returned %d", err);
-        return NULL;
-    }
-
-    Server_t* server = (Server_t*)malloc(sizeof(Server_t));
-    if(!server) {
-        log_error("malloc() returned NULL on new Server_t instance creation");
-        return NULL;
+        return SERVER_ERR_NET_FAILURE;
     }
 
     // Initialize mutex for protecting server-related critical sections
-    int p_err = pthread_mutex_init(&server->lock, NULL);
+    int p_err = pthread_mutex_init(&ctx->lock, NULL);
     if(p_err != 0) {
         log_error("pthread_mutex_init() returned %d", p_err);
-        return NULL;
+        return SERVER_ERR_PTHREAD_FAILURE;
     }
 
     // Populate data in the struct (cfg, fd), create a llist for clients and assign function pointers
-    server->cfg = cfg;
-    server->fd = fd;
-    ListError_t ret = llist_init(&server->clients_list, compare_client_fd);
+    ctx->cfg = cfg;
+    ctx->fd = fd;
+    ListError_t ret = llist_init(&ctx->clients_list, compare_client_fd);
     if(ret != LIST_ERR_OK) {
         log_error("llist_init() returned %d when initializing new clients list", ret);
-        free(server);
-        server = NULL;
-        return NULL;
+        return ret;
     }
-    server->run = server_run;
-    server->read = server_read;
-    server->write = server_write;
-    server->broadcast = server_broadcast;
-    server->disconnect = server_disconnect;
-    server->shutdown = server_shutdown;
-    server->destroy = server_destroy;
-    server->get_client_ip = server_get_client_ip;
-    server->get_clients = server_get_clients;
+    ctx->run = server_run;
+    ctx->read = server_read;
+    ctx->write = server_write;
+    ctx->broadcast = server_broadcast;
+    ctx->disconnect = server_disconnect;
+    ctx->shutdown = server_shutdown;
+    ctx->deinit = server_deinit;
+    ctx->get_client_ip = server_get_client_ip;
+    ctx->get_clients = server_get_clients;
 
-    return server;
+    return SERVER_ERR_OK;
 }

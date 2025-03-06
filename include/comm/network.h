@@ -164,19 +164,20 @@ typedef struct Server {
     ServerError_t (*shutdown)(struct Server* ctx);
 
     /**
-     * @brief Destroy this instance of Server_t and free linked list with client fds
-     * @param[in]  ctx  Address of the pointer to the Server instance
+     * @brief Deinit the server
+     * @param[in, out]  ctx  Pointer to the Server instance
      * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_GENERIC otherwise
      * @note This MUST NOT be called on running server - always call shutdown() first.
      */
-    ServerError_t (*destroy)(struct Server** ctx);
+    ServerError_t (*deinit)(struct Server* ctx);
 } Server_t;
 
 /**
- * @brief Create a new server instance
+ * @brief Initialize a new Parser instance
+ * @param[in, out]  ctx  Pointer to the Server instance
  * @param[in]  cfg  Configuration structure
- * @return Pointer to a new server instance on success, NULL otherwise
+ * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARG or SERVER_ERR_PTHREAD_FAILURE otherwise
  */
-Server_t* server_create(const ServerConfig_t cfg);
+ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg);
 
 #endif // __TCP_SERVER_H__

@@ -193,49 +193,48 @@ void test_server() {
 
     ServerConfig_t server_cfg = { .port = "65002", .cb_list = server_cb_list, .max_clients = 4, .max_conn_requests = 10 };
 
-    Server_t* server = server_create(server_cfg);
-    if(!server) {
-        log_error("server_create failed");
-        return;
-    }
-    log_debug("server_create called");
+    Server_t server;
+    ServerError_t err = server_init(&server, server_cfg);
+    log_debug("server_init called (ret: %d)", err);
 
     // Test: running a server
-    ServerError_t err = server->run(server);
-    log_debug("server->run called (ret: %d)", err);
+    err = server.run(&server);
+    log_debug("server.run called (ret: %d)", err);
 
     sleep(40);
 
     // Test: printing all clients and their IP addresses
     log_info("Connected clients:");
-    ListNode_t* node = server->get_clients(server);
+    ListNode_t* node = server.get_clients(&server);
     while(node) {
         char ip_str[IPV4_ADDRSTR_LENGHT];
         ServerClient_t* client = (ServerClient_t*)(node->data);
-        server->get_client_ip(*client, ip_str);
+        server.get_client_ip(*client, ip_str);
         log_info("Client fd: %d, thread id: %lu, ip: %s", client->fd, client->thread, ip_str);
         node = node->next;
     }
 
-    node = server->get_clients(server);
-    ServerClient_t* client = (ServerClient_t*)(node->data);
+    node = server.get_clients(&server);
+    if(node) {
+        ServerClient_t* client = (ServerClient_t*)(node->data);
 
-    // Test: disconnecting a specific client (in this example: ll head)
-    const char* msg_client = "You are disconnected!!\n";
-    err = server->write(server, *client, msg_client, strlen(msg_client));
-    log_debug("server->write called (ret: %d)", err);
-    err = server->disconnect(server, *client, false);
-    log_debug("server->disconnect called (ret: %d)", err);
+        // Test: disconnecting a specific client (in this example: ll head)
+        const char* msg_client = "You are disconnected!!\n";
+        err = server.write(&server, *client, msg_client, strlen(msg_client));
+        log_debug("server.write called (ret: %d)", err);
+        err = server.disconnect(&server, *client, false);
+        log_debug("server.disconnect called (ret: %d)", err);
+    }
 
     sleep(20);
 
     // Test: shutting down the server
-    err = server->shutdown(server);
-    log_info("server->shutdown called (ret: %d)", err);
+    err = server.shutdown(&server);
+    log_info("server.shutdown called (ret: %d)", err);
 
-    // Test: destroying the server instance
-    err = server->destroy(&server);
-    log_info("server->destroy called (ret: %d)", err);
+    // Test: deinit the server instance
+    err = server.deinit(&server);
+    log_info("server.deinit called (ret: %d)", err);
 
     sleep(5);
 }
