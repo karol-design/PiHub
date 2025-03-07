@@ -106,7 +106,7 @@ ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg);
  * @param[in]  ctx  Pointer to the Server instance
  * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT / SERVER_ERR_NET_FAILURE / SERVER_ERR_PTHREAD_FAILURE otherwise
  */
-ServerError_t server_run(struct Server* ctx);
+ServerError_t server_run(Server_t* ctx);
 
 /**
  * @brief Read data from a client
@@ -118,7 +118,7 @@ ServerError_t server_run(struct Server* ctx);
  * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_CLIENT_DISCONNECTED otherwise
  * @note This function terminates the calling thread if the client disconnected
  */
-ServerError_t server_read(struct Server* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
+ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
 
 /**
  * @brief Send data to the client
@@ -128,7 +128,7 @@ ServerError_t server_read(struct Server* ctx, ServerClient_t client, uint8_t* bu
  * @param[in]  len  Length (in bytes) of the data
  * @return SERVER_ERR_OK on success, SERVER_ERR_NET_FAILURE otherwise
  */
-ServerError_t server_write(const struct Server* ctx, ServerClient_t client, const uint8_t* data, const size_t len);
+ServerError_t server_write(const Server_t* ctx, ServerClient_t client, const uint8_t* data, const size_t len);
 
 /**
  * @brief Send data to all connected clients
@@ -137,7 +137,7 @@ ServerError_t server_write(const struct Server* ctx, ServerClient_t client, cons
  * @param[in]  len  Length (in bytes) of the data
  * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT otherwise
  */
-ServerError_t server_broadcast(struct Server* ctx, const uint8_t* data, size_t len);
+ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, size_t len);
 
 /**
  * @brief Get the char string with client's IPv4 address
@@ -153,7 +153,7 @@ ServerError_t server_get_client_ip(const ServerClient_t client, char* inet_addrs
  * @param[in]  ctx  Pointer to the Server instance
  * @return Head of LL with ServerClient_t structs on success, NULL if empty or on error
  */
-ListNode_t* server_get_clients(struct Server* ctx);
+ListNode_t* server_get_clients(Server_t* ctx);
 
 /**
  * @brief Disconnect a client
@@ -162,14 +162,14 @@ ListNode_t* server_get_clients(struct Server* ctx);
  * @param[in]  no_disconnect  Flag indicating whether on_disconnect callback should be invoked (can cause deadlock, e.g. when called by shutdown())
  * @return SERVER_ERR_OK on success, SERVER_ERR_NET_FAILURE otherwise
  */
-ServerError_t server_disconnect(struct Server* ctx, const ServerClient_t client, bool no_callback);
+ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool no_callback);
 
 /**
  * @brief Disconnect all clients and request the listening thread to exit via eventfd
  * @param[in]  ctx  Address of the pointer to the Server instance
  * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_GENERIC otherwise
  */
-ServerError_t server_shutdown(struct Server* ctx);
+ServerError_t server_shutdown(Server_t* ctx);
 
 /**
  * @brief Deinit the server
@@ -177,6 +177,6 @@ ServerError_t server_shutdown(struct Server* ctx);
  * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_GENERIC otherwise
  * @note This MUST NOT be called on running server - always call shutdown() first.
  */
-ServerError_t server_deinit(struct Server* ctx);
+ServerError_t server_deinit(Server_t* ctx);
 
 #endif // __TCP_SERVER_H__
