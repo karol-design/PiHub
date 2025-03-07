@@ -173,7 +173,7 @@ typedef struct Server {
 } Server_t;
 
 /**
- * @brief Initialize a new Parser instance
+ * @brief Initialize a new Server instance
  * @param[in, out]  ctx  Pointer to the Server instance
  * @param[in]  cfg  Configuration structure
  * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARG or SERVER_ERR_PTHREAD_FAILURE otherwise
