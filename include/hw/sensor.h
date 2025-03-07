@@ -48,14 +48,6 @@ typedef struct {
 typedef struct Sensor {
     SensorConfig_t cfg;   // Sensor config including ...
     pthread_mutex_t lock; // Lock for sensor-related critical sections
-
-    SensorError_t (*get_id)(struct Sensor* ctx, int32_t* id);
-    SensorError_t (*get_temp)(struct Sensor* ctx, float* temp);   // @TODO: Temp format TBD
-    SensorError_t (*get_hum)(struct Sensor* ctx, float* hum);     // @TODO: Hum format TBD
-    SensorError_t (*get_press)(struct Sensor* ctx, float* press); // @TODO: Press format TBD
-    SensorError_t (*get_status)(struct Sensor* ctx);
-    SensorError_t (*reset)(struct Sensor* ctx);
-    SensorError_t (*deinit)(struct Sensor* ctx);
 } Sensor_t;
 
 /**
@@ -65,5 +57,11 @@ typedef struct Sensor {
  * @return SENSOR_ERR_OK on success, SENSOR_ERR_NULL_ARG or SENSOR_ERR_PTHREAD_FAILURE otherwise
  */
 SensorError_t sensor_init(Sensor_t* ctx, const SensorConfig_t cfg);
+
+SensorError_t sensor_get_temp(Sensor_t* ctx, float* temp); // @TODO: Temp format TBD
+SensorError_t get_hum(Sensor_t* ctx, float* hum);          // @TODO: Hum format TBD
+SensorError_t get_press(Sensor_t* ctx, float* press);      // @TODO: Press format TBD
+SensorError_t get_status(Sensor_t* ctx);
+SensorError_t deinit(Sensor_t* ctx);
 
 #endif // __SENSOR_H__
