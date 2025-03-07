@@ -21,18 +21,6 @@ typedef struct {
     ServerClient_t client;
 } ClientHandlerArgs_t;
 
-// All functions are static; the user should use pointers from the structure
-ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg);
-STATIC ServerError_t server_run(Server_t* ctx);
-STATIC ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
-STATIC ServerError_t server_write(const Server_t* ctx, ServerClient_t client, const uint8_t* data, const size_t len);
-STATIC ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, const size_t len);
-STATIC ServerError_t server_get_client_ip(const ServerClient_t client, char* inet_addrstr_buf);
-STATIC ListNode_t* server_get_clients(Server_t* ctx);
-STATIC ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool no_callback);
-STATIC ServerError_t server_shutdown(Server_t* ctx);
-STATIC ServerError_t server_deinit(Server_t* ctx);
-
 /**
  * @brief Create and bind a network socket
  * @param[in]  port  Port for which a socket should be created (e.g. "65001")
@@ -73,7 +61,44 @@ STATIC ServerError_t server_handle_conn_request(Server_t* ctx);
 STATIC int compare_client_fd(const void* a, const void* b);
 
 
-STATIC ServerError_t server_run(Server_t* ctx) {
+ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg) {
+    if(!ctx || !cfg.port || !cfg.cb_list.on_client_connect || !cfg.cb_list.on_client_disconnect ||
+    !cfg.cb_list.on_data_received || !cfg.cb_list.on_server_failure) {
+        return SERVER_ERR_NULL_ARGUMENT;
+    }
+
+    // Zero-out the Server_t struct and its members on init
+    memset(ctx, 0, sizeof(Server_t));
+
+    // Create a new listening socket for the server
+    int fd;
+    ServerError_t err = server_create_socket(cfg.port, &fd);
+    if(err != SERVER_ERR_OK) {
+        log_error("server_create_socket() returned %d", err);
+        return SERVER_ERR_NET_FAILURE;
+    }
+
+    // Initialize mutex for protecting server-related critical sections
+    int p_err = pthread_mutex_init(&ctx->lock, NULL);
+    if(p_err != 0) {
+        log_error("pthread_mutex_init() returned %d", p_err);
+        return SERVER_ERR_PTHREAD_FAILURE;
+    }
+
+    // Populate data in the struct (cfg, fd), create a llist for clients and assign function pointers
+    ctx->cfg = cfg;
+    ctx->fd = fd;
+    ListError_t ret = llist_init(&ctx->clients_list, compare_client_fd);
+    if(ret != LIST_ERR_OK) {
+        log_error("llist_init() returned %d when initializing new clients list", ret);
+        return ret;
+    }
+
+
+    return SERVER_ERR_OK;
+}
+
+ServerError_t server_run(Server_t* ctx) {
     if(!ctx) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -109,7 +134,7 @@ STATIC ServerError_t server_run(Server_t* ctx) {
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len) {
+ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len) {
     if(!ctx || !buf || !len) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -133,7 +158,7 @@ STATIC ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* 
         log_info("client (fd: %d) disconnected from the server", client.fd);
 
         // Clean resources and disconnect the client (issue an eventfd "disconnect request" event)
-        ServerError_t err = ctx->disconnect(ctx, client, false);
+        ServerError_t err = server_disconnect(ctx, client, false);
         if(err != SERVER_ERR_OK) {
             log_error("server_disconnect failed (returned: %d)", err);
             return err;
@@ -153,7 +178,7 @@ STATIC ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* 
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_write(const Server_t* ctx, ServerClient_t client, const uint8_t* data, const size_t len) {
+ServerError_t server_write(const Server_t* ctx, ServerClient_t client, const uint8_t* data, const size_t len) {
     if(!ctx || !data) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -188,7 +213,7 @@ STATIC ServerError_t server_write(const Server_t* ctx, ServerClient_t client, co
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, const size_t len) {
+ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, const size_t len) {
     if(!ctx || !data) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -209,7 +234,7 @@ STATIC ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, const 
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool no_callback) {
+ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool no_callback) {
     if(!ctx) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -236,7 +261,7 @@ STATIC ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t clien
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_shutdown(Server_t* ctx) {
+ServerError_t server_shutdown(Server_t* ctx) {
     if(!ctx) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -281,7 +306,7 @@ STATIC ServerError_t server_shutdown(Server_t* ctx) {
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_deinit(Server_t* ctx) {
+ServerError_t server_deinit(Server_t* ctx) {
     if(!ctx) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -322,7 +347,7 @@ STATIC ServerError_t server_deinit(Server_t* ctx) {
     return SERVER_ERR_OK;
 }
 
-STATIC ServerError_t server_get_client_ip(const ServerClient_t client, char* inet_addrstr_) {
+ServerError_t server_get_client_ip(const ServerClient_t client, char* inet_addrstr_) {
     if(!inet_addrstr_) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -353,7 +378,7 @@ STATIC ServerError_t server_get_client_ip(const ServerClient_t client, char* ine
     return SERVER_ERR_OK;
 }
 
-STATIC ListNode_t* server_get_clients(Server_t* ctx) {
+ListNode_t* server_get_clients(Server_t* ctx) {
     if(!ctx) {
         return NULL;
     }
@@ -635,56 +660,11 @@ STATIC ServerError_t server_handle_conn_request(Server_t* ctx) {
 
     // Get client IPv4 addr as a string
     char ip_addr[IPV4_ADDRSTR_LENGHT];
-    if(ctx->get_client_ip(client, ip_addr) == SERVER_ERR_OK) {
+    if(server_get_client_ip(client, ip_addr) == SERVER_ERR_OK) {
         log_info("new client accepted (ip: %s, fd: %d, thread: %lu)", ip_addr, client.fd, client.thread);
     }
 
     // Call a "client connect" handler
     ctx->cfg.cb_list.on_client_connect(ctx, client);
-    return SERVER_ERR_OK;
-}
-
-ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg) {
-    if(!ctx || !cfg.port || !cfg.cb_list.on_client_connect || !cfg.cb_list.on_client_disconnect ||
-    !cfg.cb_list.on_data_received || !cfg.cb_list.on_server_failure) {
-        return SERVER_ERR_NULL_ARGUMENT;
-    }
-
-    // Zero-out the Server_t struct and its members on init
-    memset(ctx, 0, sizeof(Server_t));
-
-    // Create a new listening socket for the server
-    int fd;
-    ServerError_t err = server_create_socket(cfg.port, &fd);
-    if(err != SERVER_ERR_OK) {
-        log_error("server_create_socket() returned %d", err);
-        return SERVER_ERR_NET_FAILURE;
-    }
-
-    // Initialize mutex for protecting server-related critical sections
-    int p_err = pthread_mutex_init(&ctx->lock, NULL);
-    if(p_err != 0) {
-        log_error("pthread_mutex_init() returned %d", p_err);
-        return SERVER_ERR_PTHREAD_FAILURE;
-    }
-
-    // Populate data in the struct (cfg, fd), create a llist for clients and assign function pointers
-    ctx->cfg = cfg;
-    ctx->fd = fd;
-    ListError_t ret = llist_init(&ctx->clients_list, compare_client_fd);
-    if(ret != LIST_ERR_OK) {
-        log_error("llist_init() returned %d when initializing new clients list", ret);
-        return ret;
-    }
-    ctx->run = server_run;
-    ctx->read = server_read;
-    ctx->write = server_write;
-    ctx->broadcast = server_broadcast;
-    ctx->disconnect = server_disconnect;
-    ctx->shutdown = server_shutdown;
-    ctx->deinit = server_deinit;
-    ctx->get_client_ip = server_get_client_ip;
-    ctx->get_clients = server_get_clients;
-
     return SERVER_ERR_OK;
 }

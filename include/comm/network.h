@@ -2,15 +2,17 @@
  * @file server.h
  * @brief Manage a simple TCP/UDP server.
  *
- * @note Use server_create(), server->run(), server->shutdown() and server->destroy(). Use read(), write(), broadcast(),
- * disconnect(), get_clients() and get_client_ip() to mange active clients (incl. I/O) [this part of the API is thread-safe].
+ * @note Use server_create(), server_run(), server_shutdown() and server_destroy(). Use server_read(),
+ * server_write(), server_broadcast(), server_disconnect(), server_get_clients() and server_get_client_ip() to
+ * mange active clients (incl. I/O) [this part of the API is thread-safe].
  *
- * Additional control is provided via callbacks for events such as: client_connect (called by: server listening thread),
- * data_received & client_disconnect (called by: client worker thread) and server_failure (called by: server listening thread
- * OR client worker thread).
+ * Additional control is provided via callbacks for events such as: client_connect (called by: server
+ * listening thread), data_received & client_disconnect (called by: client worker thread) and server_failure
+ * (called by: server listening thread OR client worker thread).
  *
- * @note Multithreading: This component creates one thread for server control (e.g. shutdown requests) and for listening
- * to incomming data. A worker thread is also created for each new client. [no. of threads per instance = 1 + clients_count]
+ * @note Multithreading: This component creates one thread for server control (e.g. shutdown requests) and for
+ * listening to incomming data. A worker thread is also created for each new client. [no. of threads per
+ * instance = 1 + clients_count]
  */
 
 #ifndef __TCP_SERVER_H__
@@ -80,10 +82,7 @@ typedef struct {
 
 /**
  * @struct Server_t
- * @brief Include configuration data, socket fd, ll with client fds, and pointers to member functions.
- * @note Since the Server object can be shared between multiple threads (e.g. client threads), all data
- * members (apart from the Linked List, which is thread-safe) are immutable and therefore have to be defined
- * during the new Server object (instance) creation.
+ * @brief Include configuration data, socket fd and ll with client fds.
  */
 typedef struct Server {
     int32_t fd;                 // Listening socket file descriptor
@@ -92,84 +91,6 @@ typedef struct Server {
     pthread_mutex_t lock;       // Lock for server-related critical sections
     int shutdown_eventfd;       // Server's shutdown event file descriptor
     pthread_t listening_thread; // Server's listening thread ID
-
-    /**
-     * @brief Start accepting new clients and create a listening thread
-     * @param[in]  ctx  Pointer to the Server instance
-     * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT / SERVER_ERR_NET_FAILURE / SERVER_ERR_PTHREAD_FAILURE otherwise
-     */
-    ServerError_t (*run)(struct Server* ctx);
-
-    /**
-     * @brief Read data from a client
-     * @param[in]  ctx  Pointer to the Server instance
-     * @param[in]  client  Handle of the client to which data should be sent
-     * @param[out]  buf  Pointer to the memory where data will be stored
-     * @param[in]  size  Size of the buffer for the data
-     * @param[out]  len  Pointer to a variable where length (in bytes) will be stored
-     * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_CLIENT_DISCONNECTED otherwise
-     * @note This function terminates the calling thread if the client disconnected
-     */
-    ServerError_t (*read)(struct Server* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
-
-    /**
-     * @brief Send data to the client
-     * @param[in]  ctx  Pointer to the Server instance
-     * @param[in]  client  Handle of the client to which data should be sent
-     * @param[in]  data  Pointer to the data to be sent
-     * @param[in]  len  Length (in bytes) of the data
-     * @return SERVER_ERR_OK on success, SERVER_ERR_NET_FAILURE otherwise
-     */
-    ServerError_t (*write)(const struct Server* ctx, ServerClient_t client, const uint8_t* data, const size_t len);
-
-    /**
-     * @brief Send data to all connected clients
-     * @param[in]  ctx  Pointer to the Server instance
-     * @param[in]  data  Pointer to the data to be sent
-     * @param[in]  len  Length (in bytes) of the data
-     * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT otherwise
-     */
-    ServerError_t (*broadcast)(struct Server* ctx, const uint8_t* data, size_t len);
-
-    /**
-     * @brief Get the char string with client's IPv4 address
-     * @param[in]  client  Handle of the client for which the address should be retrieved
-     * @param[out]  inet_addrstr_buf  Pointer to the memory where data will be stored
-     * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_NET_FAILURE otherwise
-     * @note The inet_addrstr_buf buffer should be at least IPV4_ADDRSTR_LENGHT long
-     */
-    ServerError_t (*get_client_ip)(const ServerClient_t client, char* inet_addrstr_buf);
-
-    /**
-     * @brief Get the head of the linked list with all connected clients
-     * @param[in]  ctx  Pointer to the Server instance
-     * @return Head of LL with ServerClient_t structs on success, NULL if empty or on error
-     */
-    ListNode_t* (*get_clients)(struct Server* ctx);
-
-    /**
-     * @brief Disconnect a client
-     * @param[in]  ctx  Pointer to the Server instance
-     * @param[in]  client  Handle of the client to be disconnected
-     * @param[in]  no_disconnect  Flag indicating whether on_disconnect callback should be invoked (can cause deadlock, e.g. when called by shutdown())
-     * @return SERVER_ERR_OK on success, SERVER_ERR_NET_FAILURE otherwise
-     */
-    ServerError_t (*disconnect)(struct Server* ctx, const ServerClient_t client, bool no_callback);
-
-    /**
-     * @brief Disconnect all clients and request the listening thread to exit via eventfd
-     * @param[in]  ctx  Address of the pointer to the Server instance
-     * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_GENERIC otherwise
-     */
-    ServerError_t (*shutdown)(struct Server* ctx);
-
-    /**
-     * @brief Deinit the server
-     * @param[in, out]  ctx  Pointer to the Server instance
-     * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_GENERIC otherwise
-     * @note This MUST NOT be called on running server - always call shutdown() first.
-     */
-    ServerError_t (*deinit)(struct Server* ctx);
 } Server_t;
 
 /**
@@ -179,5 +100,83 @@ typedef struct Server {
  * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARG or SERVER_ERR_PTHREAD_FAILURE otherwise
  */
 ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg);
+
+/**
+ * @brief Start accepting new clients and create a listening thread
+ * @param[in]  ctx  Pointer to the Server instance
+ * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT / SERVER_ERR_NET_FAILURE / SERVER_ERR_PTHREAD_FAILURE otherwise
+ */
+ServerError_t server_run(struct Server* ctx);
+
+/**
+ * @brief Read data from a client
+ * @param[in]  ctx  Pointer to the Server instance
+ * @param[in]  client  Handle of the client to which data should be sent
+ * @param[out]  buf  Pointer to the memory where data will be stored
+ * @param[in]  size  Size of the buffer for the data
+ * @param[out]  len  Pointer to a variable where length (in bytes) will be stored
+ * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_CLIENT_DISCONNECTED otherwise
+ * @note This function terminates the calling thread if the client disconnected
+ */
+ServerError_t server_read(struct Server* ctx, ServerClient_t client, uint8_t* buf, const size_t buf_len, ssize_t* len);
+
+/**
+ * @brief Send data to the client
+ * @param[in]  ctx  Pointer to the Server instance
+ * @param[in]  client  Handle of the client to which data should be sent
+ * @param[in]  data  Pointer to the data to be sent
+ * @param[in]  len  Length (in bytes) of the data
+ * @return SERVER_ERR_OK on success, SERVER_ERR_NET_FAILURE otherwise
+ */
+ServerError_t server_write(const struct Server* ctx, ServerClient_t client, const uint8_t* data, const size_t len);
+
+/**
+ * @brief Send data to all connected clients
+ * @param[in]  ctx  Pointer to the Server instance
+ * @param[in]  data  Pointer to the data to be sent
+ * @param[in]  len  Length (in bytes) of the data
+ * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT otherwise
+ */
+ServerError_t server_broadcast(struct Server* ctx, const uint8_t* data, size_t len);
+
+/**
+ * @brief Get the char string with client's IPv4 address
+ * @param[in]  client  Handle of the client for which the address should be retrieved
+ * @param[out]  inet_addrstr_buf  Pointer to the memory where data will be stored
+ * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_NET_FAILURE otherwise
+ * @note The inet_addrstr_buf buffer should be at least IPV4_ADDRSTR_LENGHT long
+ */
+ServerError_t server_get_client_ip(const ServerClient_t client, char* inet_addrstr_buf);
+
+/**
+ * @brief Get the head of the linked list with all connected clients
+ * @param[in]  ctx  Pointer to the Server instance
+ * @return Head of LL with ServerClient_t structs on success, NULL if empty or on error
+ */
+ListNode_t* server_get_clients(struct Server* ctx);
+
+/**
+ * @brief Disconnect a client
+ * @param[in]  ctx  Pointer to the Server instance
+ * @param[in]  client  Handle of the client to be disconnected
+ * @param[in]  no_disconnect  Flag indicating whether on_disconnect callback should be invoked (can cause deadlock, e.g. when called by shutdown())
+ * @return SERVER_ERR_OK on success, SERVER_ERR_NET_FAILURE otherwise
+ */
+ServerError_t server_disconnect(struct Server* ctx, const ServerClient_t client, bool no_callback);
+
+/**
+ * @brief Disconnect all clients and request the listening thread to exit via eventfd
+ * @param[in]  ctx  Address of the pointer to the Server instance
+ * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_GENERIC otherwise
+ */
+ServerError_t server_shutdown(struct Server* ctx);
+
+/**
+ * @brief Deinit the server
+ * @param[in, out]  ctx  Pointer to the Server instance
+ * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_GENERIC otherwise
+ * @note This MUST NOT be called on running server - always call shutdown() first.
+ */
+ServerError_t server_deinit(struct Server* ctx);
 
 #endif // __TCP_SERVER_H__
