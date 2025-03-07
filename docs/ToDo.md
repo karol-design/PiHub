@@ -1,24 +1,21 @@
 ## ToDo:
-- Write unit tests for list.c [10h]
-- Generate unit tests for network.c and parser.c [16h]
 - Create the virtual interface (class) for the sensor [8h]
 - Implement I2C support [24h]
 - Add component for a specific sensor [12h]
 - Implement GPIO support [12h]
 - Implement System stats support [16h]
 - Implement the logging library [16h]
+- Write unit tests for network.c [8h]
 
 ## Identified problems / improvements
-- server: Remove malloc from server_create (replace that with _init) and instead use the approach from cmd_parser; this will also simplify _destroy() as no free() will be required;
 - server: When client worker thread receives the disconnect signal it eventually destroys its mutex, but at this time it can be already taken by another thread (e.g. main, which wants to write to that client);
 - server: The shutdown procedure could use a semaphore to wait for all client threads to finish (!)
 
 ## Usefull commands
+> ./build.sh --run
 > cmake -B build -DUT=ON --debug-output
 > cmake --build build/ --target clean [*to clean*]
-> rm build/ -rf && cmake -B build -DUT=ON && cmake --build build && ./build/tests/test_piHub
-> rm build/ -rf && cmake -B build && cmake --build build && ./build/src/piHub
-> rm build/ -rf && cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build && ./build/src/piHub
+> rm build/ -rf && cmake -B build -DUT=ON -DCMAKE_BUILD_TYPE=Debug && cmake --build build && ./build/tests/test_piHub && ./build/src/piHub
 > clang-tidy src/... (e.g. clang-tidy src/comm/network.c)
 > lsof -ti:65002 | xargs kill -9 (to kill the process for socket listening)
 > nc 127.0.0.1 65002 (to test the server)
@@ -26,7 +23,7 @@
 > gdb ./build/src/piHub
 
 ## Questions 
-- Should I create an abstraction for server, e.g. server_read() calls server->read() which points to _server_read()?
+- Should I create an abstraction for server, e.g. server_read() calls server->read() which points to _server_read()? I think I will just remove function pointers completely, as I see I do not have an application for them yet and they add an additional complexity and safety thread
 
 ## Optional improvements
 - Add compiler specification to CMakeLists.txt
@@ -41,7 +38,7 @@
 # Components:
 ## Finished:
 1) network
-2) parser
+2) dispatcher
 3) llist
 4) log [opt]
 
@@ -51,3 +48,6 @@
 3) gpio
 4) system
 5) piHub
+
+## Project achievements:
+- Unit and functional tests with simple mocks/stubs and fixtures

@@ -57,7 +57,7 @@ A user runs a Python client on a PC, laptop, or tablet to:
 - `action`: The operation being performed (e.g., `set`, `get`, `status`, `disconnect`, `shutdown`).
 - `parameters`: Optional parameters (e.g., GPIO pin number, sensor ID, GPIO status to be set).
 
-**note**: command parser should be case-insensitive and *parameters* should be commutative (i.e. `gpio set 10 on` and `GPIO set ON 10` should produce the same result)
+**note**: command dispatcher should be case-insensitive and *parameters* should be commutative (i.e. `gpio set 10 on` and `GPIO set ON 10` should produce the same result)
 
 ---
 
@@ -142,7 +142,7 @@ client disconnect
 ### Server (components / src structure)
 - main (calls piHub_init(), piHub_start())
 - app: **piHub** (Application layer: configures the whole server and external hardware, run main application loop)
-- app: **parser** (Interpretter for pre-defined/custom commands: validating and interpretting commands, managing other PiHub protocol functionalities, e.g. encrytpion if used)
+- app: **dispatcher** (Interpretter for pre-defined/custom commands: validating and interpretting commands, managing other PiHub protocol functionalities, e.g. encrytpion if used)
 - comm: **network** (TCP/IP Connection handler: initialising TCP server, listening for connections, sending / receiving data, managing connections - disconnect, shutdown)
 - hw: **gpio** (Abstraction for GPIO: initializing GPIO, configuring input/output, setting/resetting GPIOs, reading the value on GPIOs)
 - hw: **i2c** (Abstraction for I2C: initializing and configuring I2C, managing sending/receiving data)

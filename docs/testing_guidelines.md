@@ -1,6 +1,7 @@
 # Project testing guidelines
 
 ## Unit tests:
+### Rules of thumbs:
 1) **Avoid striving for 100% code coverage** – Focus on critical paths; complete coverage is rarely necessary and can be counterproductive.  
 2) **Test behavior, not implementation** - Unit tests should verify input/output behavior, allowing refactoring without breaking tests.  
 3) **Ensure tests can fail** – Tests that always pass provide no value; they must be able to detect failures.  
@@ -21,3 +22,10 @@
 18) **Combine unit and integration testing** – Unit tests validate components, while integration tests check interactions.  
 19) **Test for security issues** – Include tests for vulnerabilities like input validation failures.  
 20) **Maintain tests alongside code changes** – Regularly update tests to reflect changes and prevent outdated test cases.  
+
+### General guidelines:
+1) Check include list of the component and identify all external API function calls ignoring those from the std library dealing with simple memory, string etc. operations and ignoring any calls to functions from other components (we do not want to mock own functions, especially if they are tested too). Example of calls to be noted down: pthread_mutex_init, getpeername, accept etc.
+2) Analyse which of these API calls cannot be used during unit testing (e.g. because they rely on some real-time elements [e.g. SPI/I2C/Time])
+3) Use stubs when you do not want to test system behaviour if these API calls fail (simply return a constant value indicating success)
+4) Use mocks (more or less complete) if you want to explicitly test failures and input parameters
+5) In general avoid using stubs and mocks as this tend to get overcomplicated and unnecessary quickly
