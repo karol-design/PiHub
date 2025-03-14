@@ -70,7 +70,7 @@ typedef struct Dispatcher {
 /**
  * @brief Initialize a new Dispatcher instance
  * @param[in, out]  ctx  Pointer to the Dispatcher instance
- * @param[in]  id  ID of the command to be removed
+ * @param[in] cfg Configuration structure
  * @return DISPATCHER_ERR_OK on success, DISPATCHER_ERR_NULL_ARG or DISPATCHER_ERR_PTHREAD_FAILURE otherwise
  */
 DispatcherError_t dispatcher_init(Dispatcher_t* ctx, const DispatcherConfig_t cfg);
@@ -108,7 +108,7 @@ DispatcherError_t dispatcher_execute(Dispatcher_t* ctx, const char* buf);
 /**
  * @brief Deinit the dispatcher (destroy the mutex)
  * @param[in, out]  ctx  Pointer to the Dispatcher instance
- * @return DISPATCHER_ERR_OK on success, DISPATCHER_ERR_PTHREAD_FAILURE otherwise
+ * @return DISPATCHER_ERR_OK on success, DISPATCHER_ERR_NULL_ARG or DISPATCHER_ERR_PTHREAD_FAILURE otherwise
  */
 DispatcherError_t dispatcher_deinit(Dispatcher_t* ctx);
 
