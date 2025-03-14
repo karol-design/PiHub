@@ -3,6 +3,8 @@
 
 #include "app/dispatcher.h"
 #include "comm/network.h"
+#include "hw/i2c_bus.h"
+#include "utils/list.h"
 
 #define LOGS_ENABLED 1
 #include "utils/log.h"
@@ -10,11 +12,13 @@
 void test_server();
 void test_dispatcher();
 void test_ll();
+void test_i2c_bus();
 
 int main() {
     // test_dispatcher();
     // test_ll();
-    test_server();
+    // test_server();
+    test_i2c_bus();
     return 0;
 }
 
@@ -300,4 +304,60 @@ void test_ll() {
     log_info("--------");
 
     return;
+}
+
+void test_i2c_bus() {
+// Register addresses
+#define BMA150_REG_HUM_LSB 0xFE // Data reg: read only
+#define BMA150_REG_HUM_MSB 0xFD
+#define BMA150_REG_TEMP_XLSB 0xFC
+#define BMA150_REG_TEMP_MSB 0xFB
+#define BMA150_REG_TEMP_MSB 0xFA
+#define BMA150_REG_PRESS_XLSB 0xF9
+#define BMA150_REG_PRESS_LSB 0xF8
+#define BMA150_REG_PRESS_MSB 0xF7
+#define BMA150_REG_CONFIG 0xF5       // Control reg: partial read/write
+#define BMA150_REG_CTRL_MEAS 0xF4    // Control reg: read/write
+#define BMA150_REG_STATUS 0xF3       // Status reg: partial read only
+#define BMA150_REG_CTRL_HUM 0xF2     // Control reg: partial read/write
+#define BMA150_REG_CALIB_B_LENGTH 16 // Number of registers used for calibration data (section B)
+#define BMA150_REG_CALIB_B_BASE 0xE1 // Base address of all registers with calibration data (section B)
+#define BMA150_REG_RESET 0xE0        // Reset reg: write only
+#define BMA150_REG_ID 0xD0           // Chip ID: read only
+#define BMA150_REG_CALIB_B_LENGTH 26 // Number of registers used for calibration data (section A)
+#define BMA150_REG_CALIB_B_BASE 0x88 // Base address of all registers with calibration data (section A)
+
+    I2CBus_t i2c;
+    I2CBusConfig_t cfg = {
+        .i2c_adapter = 1,  // On RPI the I2C adapter is mounted as '/dev/i2c-1'
+        .slave_addr = 0x28 // Address of the sensor
+    };
+    I2CBusError_t err = i2c_bus_init(&i2c, cfg);
+    log_info("i2c_bus_init called and returned %d", err);
+    if(err != I2C_BUS_ERR_OK) {
+        return;
+    }
+
+    /* Data readout is done by starting a burst read from 0xF7 to 0xFC (temperature and pressure) or
+     * from 0xF7 to 0xFE (temperature, pressure and humidity). The data are read out in an unsigned
+     * 20-bit format both for pressure and for temperature and in an unsigned 16-bit format for
+     * humidity.*/
+
+    uint8_t id_buf;
+    i2c_bus_read(&i2c, BMA150_REG_ID, &id_buf, sizeof(id_buf));
+    log_info("sensor id: %02X", id_buf); // Should be: 0x60
+
+
+    uint8_t write_buf = 0xFF; // Set: max oversampling; Normal mode
+    i2c_bus_write(&i2c, BMA150_REG_CTRL_MEAS, &write_buf, sizeof(write_buf));
+
+    write_buf = 0x70; // Set: max standby (20ms); filter off; 3-wire SPI off
+    i2c_bus_write(&i2c, BMA150_REG_CONFIG, &write_buf, sizeof(write_buf));
+
+    uint8_t temp_buf[3];
+    i2c_bus_read(&i2c, BMA150_REG_TEMP_MSB, temp_buf, sizeof(temp_buf));
+    log_info("temperature: %hu | %hu | %hu", temp_buf[0], temp_buf[1], temp_buf[2]);
+
+    err = i2c_bus_deinit(&i2c);
+    log_info("i2c_bus_deinit called and returned %d", err);
 }
