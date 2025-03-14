@@ -30,7 +30,7 @@ I2CBusError_t i2c_bus_init(I2CBus_t* ctx, const I2CBusConfig_t cfg) {
     }
 
     // Set the address of the I2C slave device
-    int ret = ioctl(fd, I2C_SLAVE, (long)cfg.slave_addr);
+    int ret = ioctl(fd, I2C_SLAVE, cfg.slave_addr);
     if(ret < 0) {
         log_error("ioctl() returned: %d (err: %s)", ret, strerror(errno));
         close(fd); // Try closing the I2C adapter device file

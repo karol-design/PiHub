@@ -34,14 +34,14 @@ void handle_client_connect(void* ctx, const ServerClient_t client) {
     log_debug("server_get_client_ip called (ret: %d)", err);
 
     char msg_client[64] = "Welcome ";
-    strlcat(msg_client, ip_str, 64);
-    strlcat(msg_client, "!\n", 64);
+    strncat(msg_client, ip_str, 63);
+    strncat(msg_client, "!\n", 63);
     err = server_write(_ctx, client, msg_client, strlen(msg_client));
     log_debug("server_write called (ret: %d)", err);
 
     char msg_broadcast[64] = "New client (";
-    strlcat(msg_broadcast, ip_str, 64);
-    strlcat(msg_broadcast, ") joined the session!\n", 64);
+    strncat(msg_broadcast, ip_str, 63);
+    strncat(msg_broadcast, ") joined the session!\n", 63);
     err = server_broadcast(_ctx, msg_broadcast, strlen(msg_broadcast));
     log_debug("server_broadcast called (ret: %d)", err);
 }
@@ -312,7 +312,7 @@ void test_i2c_bus() {
 #define BMA150_REG_HUM_MSB 0xFD
 #define BMA150_REG_TEMP_XLSB 0xFC
 #define BMA150_REG_TEMP_MSB 0xFB
-#define BMA150_REG_TEMP_MSB 0xFA
+#define BMA150_REG_TEMP_LSB 0xFA
 #define BMA150_REG_PRESS_XLSB 0xF9
 #define BMA150_REG_PRESS_LSB 0xF8
 #define BMA150_REG_PRESS_MSB 0xF7
@@ -324,13 +324,13 @@ void test_i2c_bus() {
 #define BMA150_REG_CALIB_B_BASE 0xE1 // Base address of all registers with calibration data (section B)
 #define BMA150_REG_RESET 0xE0        // Reset reg: write only
 #define BMA150_REG_ID 0xD0           // Chip ID: read only
-#define BMA150_REG_CALIB_B_LENGTH 26 // Number of registers used for calibration data (section A)
-#define BMA150_REG_CALIB_B_BASE 0x88 // Base address of all registers with calibration data (section A)
+#define BMA150_REG_CALIB_A_LENGTH 26 // Number of registers used for calibration data (section A)
+#define BMA150_REG_CALIB_A_BASE 0x88 // Base address of all registers with calibration data (section A)
 
     I2CBus_t i2c;
     I2CBusConfig_t cfg = {
         .i2c_adapter = 1,  // On RPI the I2C adapter is mounted as '/dev/i2c-1'
-        .slave_addr = 0x28 // Address of the sensor
+        .slave_addr = 0x5D // Address of the sensor
     };
     I2CBusError_t err = i2c_bus_init(&i2c, cfg);
     log_info("i2c_bus_init called and returned %d", err);
@@ -344,19 +344,19 @@ void test_i2c_bus() {
      * humidity.*/
 
     uint8_t id_buf;
-    i2c_bus_read(&i2c, BMA150_REG_ID, &id_buf, sizeof(id_buf));
-    log_info("sensor id: %02X", id_buf); // Should be: 0x60
+    i2c_bus_read(&i2c, 0x0F, &id_buf, sizeof(id_buf));
+    log_info("sensor id: %02X", id_buf); // Should be: 0xBD for LPS25H
 
 
-    uint8_t write_buf = 0xFF; // Set: max oversampling; Normal mode
-    i2c_bus_write(&i2c, BMA150_REG_CTRL_MEAS, &write_buf, sizeof(write_buf));
+    uint8_t write_buf = 0x80; // Set: max oversampling; Normal mode
+    i2c_bus_write(&i2c, 0x20, &write_buf, sizeof(write_buf));
 
-    write_buf = 0x70; // Set: max standby (20ms); filter off; 3-wire SPI off
-    i2c_bus_write(&i2c, BMA150_REG_CONFIG, &write_buf, sizeof(write_buf));
+    // write_buf = 0x70; // Set: max standby (20ms); filter off; 3-wire SPI off
+    // i2c_bus_write(&i2c, BMA150_REG_CONFIG, &write_buf, sizeof(write_buf));
 
-    uint8_t temp_buf[3];
-    i2c_bus_read(&i2c, BMA150_REG_TEMP_MSB, temp_buf, sizeof(temp_buf));
-    log_info("temperature: %hu | %hu | %hu", temp_buf[0], temp_buf[1], temp_buf[2]);
+    // uint8_t temp_buf[3];
+    // i2c_bus_read(&i2c, BMA150_REG_TEMP_MSB, temp_buf, sizeof(temp_buf));
+    // log_info("temperature: %hu | %hu | %hu", temp_buf[0], temp_buf[1], temp_buf[2]);
 
     err = i2c_bus_deinit(&i2c);
     log_info("i2c_bus_deinit called and returned %d", err);
