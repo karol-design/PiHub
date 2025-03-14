@@ -10,11 +10,11 @@ file(GLOB_RECURSE UT_SOURCES
 set(MOCK_FUNCTIONS)
 
 # Add mock functions for std lib networking
-string(APPEND MOCK_FUNCTIONS "-Wl,--wrap=getaddrinfo -Wl,--wrap=socket -Wl,--wrap=bind -Wl,--wrap=freeaddrinfo -Wl,--wrap=listen ")
+# string(APPEND MOCK_FUNCTIONS "-Wl,--wrap=getaddrinfo -Wl,--wrap=socket -Wl,--wrap=bind -Wl,--wrap=freeaddrinfo -Wl,--wrap=listen ")
 # Add mock functions for pthread
 # string(APPEND MOCK_FUNCTIONS "-Wl,--wrap=pthread_mutex_init -Wl,--wrap=pthread_mutex_lock -Wl,--wrap=pthread_mutex_unlock -Wl,--wrap=pthread_mutex_destroy -Wl,--wrap=pthread_create -Wl,--wrap=pthread_detach -Wl,--wrap=pthread_exit ")
 # Add mock functions for std lib epoll management
-string(APPEND MOCK_FUNCTIONS "-Wl,--wrap=epoll_create1 -Wl,--wrap=epoll_ctl ")
+# string(APPEND MOCK_FUNCTIONS "-Wl,--wrap=epoll_create1 -Wl,--wrap=epoll_ctl ")
 # Add mock functions for server component methods
 # string(APPEND MOCK_FUNCTIONS "-Wl,--wrap=server_run_event_loop")
 

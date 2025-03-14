@@ -22,6 +22,10 @@
 > valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose --log-file=valgrind-out.txt ./build/src/piHub (for memory leak check)
 > gdb ./build/src/piHub
 
+> sudo i2cdetect -y 1 (To list all I2C devices on dev/i2c-2)
+> sudo i2cget -y 1 0x5d 0xD0 (To check the status register)
+> sudo i2cdump -y 1 0x5d (To read and dump the content of all registers)
+
 ## Questions 
 - Should I create an abstraction for server, e.g. server_read() calls server->read() which points to _server_read()? I think I will just remove function pointers completely, as I see I do not have an application for them yet and they add an additional complexity and safety thread
 
