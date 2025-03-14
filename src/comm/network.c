@@ -85,7 +85,7 @@ ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg) {
         return SERVER_ERR_PTHREAD_FAILURE;
     }
 
-    // Populate data in the struct (cfg, fd), create a llist for clients and assign function pointers
+    // Populate data in the struct (cfg, fd) and create a llist for clients
     ctx->cfg = cfg;
     ctx->fd = fd;
     ListError_t ret = llist_init(&ctx->clients_list, compare_client_fd);
@@ -93,7 +93,6 @@ ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg) {
         log_error("llist_init() returned %d when initializing new clients list", ret);
         return ret;
     }
-
 
     return SERVER_ERR_OK;
 }

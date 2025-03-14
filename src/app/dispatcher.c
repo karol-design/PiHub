@@ -1,6 +1,7 @@
+#include "app/dispatcher.h"
+
 #include <string.h> // For: strtok_r(), strnlen()
 
-#include "app/dispatcher.h"
 #include "utils/common.h"
 #include "utils/log.h"
 
