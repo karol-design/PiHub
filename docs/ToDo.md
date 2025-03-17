@@ -1,13 +1,14 @@
 ## ToDo:
-- Create the virtual interface (class) for the sensor [8h]
-- Implement I2C support [24h]
+- Implement I2C support [12h]
 - Add component for a specific sensor [12h]
 - Implement GPIO support [12h]
 - Implement System stats support [16h]
-- Implement the logging library [16h]
-- Write unit tests for network.c [8h]
+- Learn python fundamentals and develop a client script [24h]
+
 
 ## Identified problems / improvements
+- build automation: add build/debug/test integration to Cmake or VScode
+- unit tests: should include checks whether mutexes are taken and !released
 - server: When client worker thread receives the disconnect signal it eventually destroys its mutex, but at this time it can be already taken by another thread (e.g. main, which wants to write to that client);
 - server: The shutdown procedure could use a semaphore to wait for all client threads to finish (!)
 
