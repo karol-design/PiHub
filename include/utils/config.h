@@ -1,0 +1,1 @@
+#define PIHUB_I2C_ADAPTER 1 // On RPI the I2C adapter is mounted as '/dev/i2c-1'

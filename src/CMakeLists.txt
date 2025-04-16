@@ -2,6 +2,7 @@ file(GLOB_RECURSE PIHUB_SRC_FILES
         ${CMAKE_SOURCE_DIR}/src/app/*.c
         ${CMAKE_SOURCE_DIR}/src/comm/*.c
         ${CMAKE_SOURCE_DIR}/src/hw/*.c
+        ${CMAKE_SOURCE_DIR}/src/sensors/*.c
         ${CMAKE_SOURCE_DIR}/src/utils/*.c)
 
 # Create static library

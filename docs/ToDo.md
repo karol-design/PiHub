@@ -1,10 +1,10 @@
 ## ToDo:
-- Implement I2C support [12h]
-- Add component for a specific sensor [12h]
-- Implement GPIO support [12h]
-- Implement System stats support [16h]
-- Learn python fundamentals and develop a client script [24h]
-
+- Finish the component for BME280 (get_temp, get_hum, get_press) and fix commenting in i2c/hw/sensor/bme280 [6h]
+- Implement GPIO support [8h]
+- Implement SPI support and complete hw_interface component [6h]
+- Implement System stats support [8h]
+- Implement core app logic (setup; command handling; shutdown) [16h]
+- (opt) Learn python fundamentals and develop a client script [24h]
 
 ## Identified problems / improvements
 - build automation: add build/debug/test integration to Cmake or VScode
@@ -27,9 +27,6 @@
 > sudo i2cget -y 1 0x5d 0xD0 (To check the status register)
 > sudo i2cdump -y 1 0x5d (To read and dump the content of all registers)
 
-## Questions 
-- Should I create an abstraction for server, e.g. server_read() calls server->read() which points to _server_read()? I think I will just remove function pointers completely, as I see I do not have an application for them yet and they add an additional complexity and safety thread
-
 ## Optional improvements
 - Add compiler specification to CMakeLists.txt
 - I could add a Cat.M/NB-IoT module to the RPI; install Ofono, use a SIM with a static IP and make the whole server completely remote (e.g. for farming)
@@ -46,13 +43,10 @@
 2) dispatcher
 3) llist
 4) log [opt]
+5) i2c & sensor
 
 ## ToDo:
-1) i2c
-2) sensor & dht22
-3) gpio
-4) system
-5) piHub
-
-## Project achievements:
-- Unit and functional tests with simple mocks/stubs and fixtures
+1) bme280
+2) gpio
+3) system
+4) piHub

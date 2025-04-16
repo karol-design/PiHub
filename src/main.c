@@ -3,7 +3,10 @@
 
 #include "app/dispatcher.h"
 #include "comm/network.h"
+#include "hw/hw_interface.h"
 #include "hw/i2c_bus.h"
+#include "sensors/bme280.h"
+#include "sensors/sensor.h"
 #include "utils/list.h"
 
 #define LOGS_ENABLED 1
@@ -13,12 +16,14 @@ void test_server();
 void test_dispatcher();
 void test_ll();
 void test_i2c_bus();
+void test_sensor();
 
 int main() {
     // test_dispatcher();
     // test_ll();
     // test_server();
-    test_i2c_bus();
+    // test_i2c_bus();
+    test_sensor();
     return 0;
 }
 
@@ -81,6 +86,7 @@ void handle_server_failure(void* ctx, const ServerError_t err) {
 }
 
 /************* Event handlers for Dispatcher *************/
+
 void handle_gpio_set(char* argv, uint32_t argc) {
     log_info("handle_gpio_set called");
 
@@ -307,6 +313,8 @@ void test_ll() {
 }
 
 void test_i2c_bus() {
+#define BME280_ADDR 0x76 // Address of the sensor (0x76 for BME280 or 0x5D for LPS25H)
+
 // Register addresses
 #define BME280_REG_HUM_LSB 0xFE // Data regs: read only
 #define BME280_REG_HUM_MSB 0xFD
@@ -329,8 +337,7 @@ void test_i2c_bus() {
 
     I2CBus_t i2c;
     I2CBusConfig_t cfg = {
-        .i2c_adapter = 1,  // On RPI the I2C adapter is mounted as '/dev/i2c-1'
-        .slave_addr = 0x76 // Address of the sensor (0x76 for BME280 or 0x5D for LPS25H)
+        .i2c_adapter = 1, // On RPI the I2C adapter is mounted as '/dev/i2c-1'
     };
     I2CBusError_t err = i2c_bus_init(&i2c, cfg);
     log_info("i2c_bus_init called and returned %d", err);
@@ -340,15 +347,16 @@ void test_i2c_bus() {
 
     // Set: max oversampling (x16) on temp and press measurements; Normal mode
     uint8_t write_buf = 0xFF;
-    i2c_bus_write(&i2c, BME280_REG_CTRL_MEAS, &write_buf, sizeof(write_buf));
+
+    i2c_bus_write(&i2c, BME280_ADDR, BME280_REG_CTRL_MEAS, &write_buf, sizeof(write_buf));
 
     // Set: max standby (20ms); filter off; 3-wire SPI off
     write_buf = 0x70;
-    i2c_bus_write(&i2c, BME280_REG_CONFIG, &write_buf, sizeof(write_buf));
+    i2c_bus_write(&i2c, BME280_ADDR, BME280_REG_CONFIG, &write_buf, sizeof(write_buf));
 
     // Check sensor ID (should be: 0xBD for LPS25H and 0x60 for BM280)
     uint8_t id_buf;
-    i2c_bus_read(&i2c, BME280_REG_ID, &id_buf, sizeof(id_buf));
+    i2c_bus_read(&i2c, BME280_ADDR, BME280_REG_ID, &id_buf, sizeof(id_buf));
     log_info("sensor id: %02X", id_buf);
 
     /* Data readout is done by starting a burst read from 0xF7 to 0xFC (temperature and pressure) or
@@ -356,9 +364,33 @@ void test_i2c_bus() {
      * 20-bit format both for pressure and for temperature and in an unsigned 16-bit format for
      * humidity.*/
     uint8_t temp_buf[3];
-    i2c_bus_read(&i2c, BME280_REG_TEMP_LSB, temp_buf, sizeof(temp_buf));
+    i2c_bus_read(&i2c, BME280_ADDR, BME280_REG_TEMP_LSB, temp_buf, sizeof(temp_buf));
     log_info("temperature: %hu | %hu | %hu", temp_buf[0], temp_buf[1], temp_buf[2]);
 
     err = i2c_bus_deinit(&i2c);
     log_info("i2c_bus_deinit called and returned %d", err);
+}
+
+void test_sensor() {
+    HwInterface_t hw_interface_i2c;
+    HwInterfaceError_t h_ret = hw_interface_init(&hw_interface_i2c, HW_INTERFACE_I2C);
+    log_info("hw_interface_init called and returned %d", h_ret);
+
+    Sensor_t s_bme280_1;
+    SensorError_t s_ret = bme280_init(&s_bme280_1, 0x76, hw_interface_i2c);
+    log_info("bme280_init called and returned %d", s_ret);
+
+    // Sensor.get_reading() -> bme280_get_reading() -> bme280_get_temp() -> hw_interface_read() -> i2c_bus_read()
+    SensorOutput_t out;
+    s_ret = s_bme280_1.get_reading(&s_bme280_1, SENSOR_MEASUREMENT_TEMP, &out);
+    log_info("get_reading called and returned %d (out: %f)", s_ret, out.temp);
+
+    s_ret = s_bme280_1.get_status(&s_bme280_1);
+    log_info("get_status called and returned %d", s_ret);
+
+    s_ret = s_bme280_1.deinit(&s_bme280_1);
+    log_info("deinit called and returned %d", s_ret);
+
+    h_ret = hw_interface_deinit(&hw_interface_i2c);
+    log_info("hw_interface_deinit called and returned %d", h_ret);
 }
