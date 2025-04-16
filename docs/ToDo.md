@@ -24,8 +24,8 @@
 > gdb ./build/src/piHub
 
 > sudo i2cdetect -y 1 (To list all I2C devices on dev/i2c-2)
-> sudo i2cget -y 1 0x5d 0xD0 (To check the status register)
-> sudo i2cdump -y 1 0x5d (To read and dump the content of all registers)
+> sudo i2cget -y 1 0x76 0xD0 (To check the status register)
+> sudo i2cdump -y 1 0x76 (To read and dump the content of all registers)
 
 ## Optional improvements
 - Add compiler specification to CMakeLists.txt

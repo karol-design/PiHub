@@ -47,11 +47,11 @@
  * @note Writes to the “config” register in normal mode may be ignored. In sleep mode writes are not ignored.
  */
 typedef union {
-    struct {
-        uint8_t t_sb : 3;
-        uint8_t filter : 3;
-        uint8_t reserved : 1;
-        uint8_t spi3w_en : 1;
+    struct __attribute__((packed)) {
+        uint8_t spi3w_en : 1; // Bit 0: Enables 3-wire SPI interface when set to '1'
+        uint8_t reserved : 1; // Bit 1: Reserved
+        uint8_t filter : 3;   // Bits 2,3,4: Controls the time constant of the IIR filter
+        uint8_t t_sb : 3;     // Bits 5,6,7: Controls inactive duration
     } b;
     uint8_t w;
 } ConfigReg_t;
@@ -62,10 +62,10 @@ typedef union {
  * @note Needs to be written after changing "ctrl_hum" for the changes to become effective.
  */
 typedef union {
-    struct {
-        uint8_t osrs_t : 3;
-        uint8_t osrs_p : 3;
-        uint8_t mode : 2;
+    struct __attribute__((packed)) {
+        uint8_t mode : 2;   // Bits 0,1: Control shte sensor mode of the device
+        uint8_t osrs_p : 3; // Bits 2,3,4: Controls oversampling of pressure data
+        uint8_t osrs_t : 3; // Bits: 5,6,7: Controls oversampling of temperature data
     } b;
     uint8_t w;
 } CtrlMeasReg_t;
@@ -77,8 +77,8 @@ typedef union {
  */
 typedef union {
     struct {
-        uint8_t reserved : 5;
-        uint8_t osrs_h : 3;
+        uint8_t osrs_h : 3;   // Bits 0,1,2: Controls oversampling of humidity data
+        uint8_t reserved : 5; // Bits 3,4,5,6,7: Reserved
     } b;
     uint8_t w;
 } CtrlHumReg_t;
@@ -89,10 +89,10 @@ typedef union {
  */
 typedef union {
     struct {
-        uint8_t reserved_1 : 4;
-        uint8_t measuring : 1;
-        uint8_t reserved_2 : 2;
-        uint8_t im_update : 1;
+        uint8_t im_update : 1; // Bit 0: Automatically set to '1' when NVM data are being copied to image registers
+        uint8_t reserved_2 : 2; // Bit 1,2: Reserved
+        uint8_t measuring : 1;  // Bit 3: Automatically set to '1' when a conversion is running
+        uint8_t reserved_1 : 4; // Bit 4,5,6,7: Reserved
     } b;
     uint8_t w;
 } StatusReg_t;

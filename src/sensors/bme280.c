@@ -43,7 +43,6 @@ SensorError_t bme280_init(Sensor_t* ctx, const uint8_t addr, HwInterface_t hw_ct
     ctx->deinit = bme280_deinit;
 
     // Set: max oversampling (x16) on temp and press measurements; Normal mode
-    uint8_t write_buf = 0xFF;
     CtrlMeasReg_t ctrl_meas_reg = { .b.osrs_p = BME280_OSRS_MAX_OVERSAMPLING,
         .b.osrs_t = BME280_OSRS_MAX_OVERSAMPLING,
         .b.mode = BME280_NORMAL_MODE };
@@ -55,7 +54,6 @@ SensorError_t bme280_init(Sensor_t* ctx, const uint8_t addr, HwInterface_t hw_ct
     }
 
     // Set: max standby (20ms); filter off; 3-wire SPI off
-    write_buf = 0x70;
     ConfigReg_t config_reg = { .b.filter = BME280_FILTER_OFF, .b.t_sb = BME280_STANDBY_MAX_TIME, .b.spi3w_en = BME280_SPI3W_DISABLED };
     h_ret = hw_interface_write(&hw_ctx, addr, BME280_REG_CONFIG, &config_reg.w, sizeof(config_reg.w));
     if(h_ret != HW_INTERFACE_ERR_OK) {
