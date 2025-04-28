@@ -63,7 +63,7 @@ STATIC int compare_client_fd(const void* a, const void* b);
 
 ServerError_t server_init(Server_t* ctx, const ServerConfig_t cfg) {
     if(!ctx || !cfg.port || !cfg.cb_list.on_client_connect || !cfg.cb_list.on_client_disconnect ||
-    !cfg.cb_list.on_data_received || !cfg.cb_list.on_server_failure) {
+       !cfg.cb_list.on_data_received || !cfg.cb_list.on_server_failure) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
 
@@ -658,7 +658,7 @@ STATIC ServerError_t server_handle_conn_request(Server_t* ctx) {
     }
 
     // Get client IPv4 addr as a string
-    char ip_addr[IPV4_ADDRSTR_LENGHT];
+    char ip_addr[IPV4_ADDRSTR_LENGTH];
     if(server_get_client_ip(client, ip_addr) == SERVER_ERR_OK) {
         log_info("new client accepted (ip: %s, fd: %d, thread: %lu)", ip_addr, client.fd, client.thread);
     }
