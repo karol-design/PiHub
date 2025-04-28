@@ -94,7 +94,7 @@ AlignEscapedNewlinesLeft: true
 # Specifically, this aligns operands of a single expression that needs to be split over multiple lines, e.g.:
 # int aaa = bbbbbbbbbbbbbbb +
 #           ccccccccccccccc;
-AlignOperands: false
+AlignOperands: true
 
 # AlignTrailingComments (bool)
 # If true, aligns trailing comments.
@@ -106,7 +106,7 @@ AllowAllParametersOfDeclarationOnNextLine: false
 
 # AllowShortBlocksOnASingleLine (bool)
 # Allows contracting simple braced statements to a single line.
-AllowShortBlocksOnASingleLine: false
+AllowShortBlocksOnASingleLine: true
 
 # AllowShortCaseLabelsOnASingleLine (bool)
 # If true, short case labels will be contracted to a single line.
@@ -174,7 +174,7 @@ BinPackParameters: false
 #   BOS_None (in configuration: None) Break after operators.
 #   BOS_NonAssignment (in configuration: NonAssignment) Break before operators that aren’t assignments.
 #   BOS_All (in configuration: All) Break before operators.
-BreakBeforeBinaryOperators: false
+BreakBeforeBinaryOperators: None
 
 # BreakBeforeBraces (BraceBreakingStyle)
 # The brace breaking style to use.
