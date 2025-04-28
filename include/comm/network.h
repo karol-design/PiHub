@@ -26,7 +26,7 @@
 
 #include "utils/list.h" // For: List_t
 
-#define IPV4_ADDRSTR_LENGHT INET_ADDRSTRLEN
+#define IPV4_ADDRSTR_LENGTH INET_ADDRSTRLEN
 #define MAX_PORTSTR_LENGTH 12
 
 /**
@@ -144,7 +144,7 @@ ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, size_t len);
  * @param[in]  client  Handle of the client for which the address should be retrieved
  * @param[out]  inet_addrstr_buf  Pointer to the memory where data will be stored
  * @return SERVER_ERR_OK on success, SERVER_ERR_NULL_ARGUMENT or SERVER_ERR_NET_FAILURE otherwise
- * @note The inet_addrstr_buf buffer should be at least IPV4_ADDRSTR_LENGHT long
+ * @note The inet_addrstr_buf buffer should be at least IPV4_ADDRSTR_LENGTH long
  */
 ServerError_t server_get_client_ip(const ServerClient_t client, char* inet_addrstr_buf);
 

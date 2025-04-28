@@ -2,7 +2,7 @@
  * @file hw_interface.h
  * @brief Wrapper API for all hardware interface operations (both I2C and SPI)
  *
- * @note Thread-safety should be provided by higher-level components (e.g. Sensor.c)
+ * @note Thread-safety should be provided by lower-level components (e.g. i2c_bus)
  *
  * @note Use hw_interface_init(), and hw_interface_deinit() to initialize and deinitialize new I2C/SPI bus
  * instance. Use: hw_interface_read() and hw_interface_write() to read and write single or multiple bytes
@@ -46,7 +46,6 @@ typedef enum {
  */
 typedef struct {
     HwInterfaceType_t type; // Type of the interface (e.g. SPI/I2C)
-    pthread_mutex_t lock;   // Lock for hw interface critical sections
     union {
         I2CBus_t i2c;
         SPIBus_t spi;
@@ -58,21 +57,21 @@ typedef struct {
  *
  * Open the I2C/SPI adapter and set it up for communication.
  *
- * @param[in, out] ctx Pointer to the I2CBus_t instance.
+ * @param[in, out] ctx Pointer to the HwInterface_t instance.
  * @param[in] type Configuration structure.
- * @return I2C_BUS_ERR_OK on success, I2C_BUS_ERR_NULL_ARGUMENT or I2C_BUS_ERR_I2CDEV_FAILURE otherwise.
+ * @return HW_INTERFACE_ERR_OK on success, HW_INTERFACE_ERR_NULL_ARGUMENT or HW_INTERFACE_ERR_INIT_FAILURE otherwise.
  */
 HwInterfaceError_t hw_interface_init(HwInterface_t* ctx, const HwInterfaceType_t type);
 
 /**
  * @brief Perform a burst read from a selected register.
  *
- * @param[in] ctx Pointer to the I2CBus_t instance.
+ * @param[in, out] ctx Pointer to the HwInterface_t instance.
  * @param[in] slave_addr Address of the slave device (7 lower bits)
  * @param[in] reg_addr Register address to read from.
  * @param[out] buf Buffer to store the read data.
  * @param[in] len Number of bytes to read.
- * @return I2C_BUS_ERR_OK on success, error code otherwise.
+ * @return HW_INTERFACE_ERR_OK on success, error code otherwise.
  */
 HwInterfaceError_t
 hw_interface_read(HwInterface_t* ctx, const uint8_t slave_addr, const uint8_t reg_addr, uint8_t* buf, const size_t len);
@@ -94,7 +93,7 @@ hw_interface_write(HwInterface_t* ctx, const uint8_t slave_addr, const uint8_t r
  * @brief Deinitialize the hardware interface instance and release resources.
  *
  * @param[in, out] ctx Pointer to the HwInterface_t instance.
- * @return HW_INTERFACE_ERR_OK on success, error code otherwise.
+ * @return HW_INTERFACE_ERR_OK on success, HW_INTERFACE_ERR_NULL_ARGUMENT or HW_INTERFACE_ERR_DEINIT_FAILURE otherwise.
  */
 HwInterfaceError_t hw_interface_deinit(HwInterface_t* ctx);
 

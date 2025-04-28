@@ -2,7 +2,7 @@
  * @file i2c_bus.h
  * @brief Wrapper API for master I2C communication over spidev interface
  *
- * @note Thread-safety should be provided by higher-level components (e.g. Sensor.c)
+ * @note Designed to provide thread-safe functionality (MT-Safe)
  *
  * @note Use i2c_bus_init(), and i2c_bus_deinit() to initialize and deinitialize new I2C bus instance.
  * Use: i2c_bus_read() and i2c_bus_write() to read and write single or multiple bytes to/from
