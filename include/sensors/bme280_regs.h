@@ -11,7 +11,8 @@
 /**
  * Map of BME280 registers
  */
-#define BME280_REG_HUM_LSB 0xFE // Data regs (hum, temp, press): read only
+#define BME280_REG_DATA_LENGTH 8 // Number of registers used for temp/hum/press data
+#define BME280_REG_HUM_LSB 0xFE  // Data regs (hum, temp, press): read only
 #define BME280_REG_HUM_MSB 0xFD
 #define BME280_REG_TEMP_XLSB 0xFC
 #define BME280_REG_TEMP_MSB 0xFB
@@ -19,16 +20,36 @@
 #define BME280_REG_PRESS_XLSB 0xF9
 #define BME280_REG_PRESS_LSB 0xF8
 #define BME280_REG_PRESS_MSB 0xF7
+
 #define BME280_REG_CONFIG 0xF5       // Control reg: partial read/write
 #define BME280_REG_CTRL_MEAS 0xF4    // Control reg: read/write
 #define BME280_REG_STATUS 0xF3       // Status reg: partial read only
 #define BME280_REG_CTRL_HUM 0xF2     // Control reg: partial read/write
-#define BME280_REG_CALIB_B_LENGTH 16 // Number of registers used for calibration data (section B)
+#define BME280_REG_CALIB_B_LENGTH 7  // Number of registers used for calibration data (section B)
 #define BME280_REG_CALIB_B_BASE 0xE1 // Base address of all registers with calibration data (section B)
 #define BME280_REG_RESET 0xE0        // Reset reg: write only
 #define BME280_REG_ID 0xD0           // Chip ID: read only
-#define BME280_REG_CALIB_A_LENGTH 26 // Number of registers used for calibration data (section A)
+#define BME280_REG_CALIB_A_LENGTH 25 // Number of registers used for calibration data (section A)
 #define BME280_REG_CALIB_A_BASE 0x88 // Base address of all registers with calibration data (section A)
+
+// Calibration data
+#define BME280_REG_DIG_T1 0x88 // and 0x89
+#define BME280_REG_DIG_T2 0x8A // and 0x8B
+#define BME280_REG_DIG_T3 0x8C // and 0x8C
+#define BME280_REG_DIG_P1 0x8E // and 0x8F
+#define BME280_REG_DIG_P2 0x90 // and 0x91
+#define BME280_REG_DIG_P3 0x92 // and 0x93
+#define BME280_REG_DIG_P4 0x94 // and 0x95
+#define BME280_REG_DIG_P5 0x96 // and 0x97
+#define BME280_REG_DIG_P6 0x98 // and 0x99
+#define BME280_REG_DIG_P7 0x9A // and 0x9B
+#define BME280_REG_DIG_P8 0x9C // and 0x9D
+#define BME280_REG_DIG_P9 0x9E // and 0x9F
+#define BME280_REG_DIG_H1 0xA1
+#define BME280_REG_DIG_H2 0xE1 // and 0xE2
+#define BME280_REG_DIG_H3 0xE3
+#define BME280_REG_DIG_H4 0xE4 // and 0xE5 [3:0] (!)
+#define BME280_REG_DIG_H5 0xE5 // only [7:4] and 0xE6 (!)
 
 
 // Settings

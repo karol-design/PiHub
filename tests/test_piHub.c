@@ -8,6 +8,7 @@
 extern int run_network_tests(void);
 extern int run_llist_tests(void);
 extern int run_dispatcher_tests(void);
+extern int run_bme280_tests(void);
 
 int main() {
     // Configure the CMocka results generation
@@ -17,5 +18,6 @@ int main() {
     // result += run_network_tests();
     result += run_llist_tests();
     result += run_dispatcher_tests();
+    result += run_bme280_tests();
     return result;
 }
