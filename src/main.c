@@ -3,9 +3,11 @@
 
 #include "app/dispatcher.h"
 #include "comm/network.h"
+#include "hw/gpio.h"
 #include "hw/hw_interface.h"
 #include "hw/i2c_bus.h"
 #include "sensors/bme280.h"
+#include "sensors/bme280_regs.h"
 #include "sensors/sensor.h"
 #include "utils/list.h"
 
@@ -16,14 +18,16 @@ void test_server();
 void test_dispatcher();
 void test_ll();
 void test_i2c_bus();
-void test_sensor();
+void test_bme280();
+void test_gpio();
 
 int main() {
     // test_dispatcher();
     // test_ll();
     // test_server();
     // test_i2c_bus();
-    test_sensor();
+    test_bme280();
+    test_gpio();
     return 0;
 }
 
@@ -34,7 +38,7 @@ void handle_client_connect(void* ctx, const ServerClient_t client) {
 
     Server_t* _ctx = (Server_t*)ctx;
 
-    char ip_str[IPV4_ADDRSTR_LENGHT];
+    char ip_str[IPV4_ADDRSTR_LENGTH];
     ServerError_t err = server_get_client_ip(client, ip_str);
     log_debug("server_get_client_ip called (ret: %d)", err);
 
@@ -220,7 +224,7 @@ void test_server() {
     log_info("Connected clients:");
     ListNode_t* node = server_get_clients(&server);
     while(node) {
-        char ip_str[IPV4_ADDRSTR_LENGHT];
+        char ip_str[IPV4_ADDRSTR_LENGTH];
         ServerClient_t* client = (ServerClient_t*)(node->data);
         server_get_client_ip(*client, ip_str);
         log_info("Client fd: %d, thread id: %lu, ip: %s", client->fd, client->thread, ip_str);
@@ -315,26 +319,6 @@ void test_ll() {
 void test_i2c_bus() {
 #define BME280_ADDR 0x76 // Address of the sensor (0x76 for BME280 or 0x5D for LPS25H)
 
-// Register addresses
-#define BME280_REG_HUM_LSB 0xFE // Data regs: read only
-#define BME280_REG_HUM_MSB 0xFD
-#define BME280_REG_TEMP_XLSB 0xFC
-#define BME280_REG_TEMP_MSB 0xFB
-#define BME280_REG_TEMP_LSB 0xFA
-#define BME280_REG_PRESS_XLSB 0xF9
-#define BME280_REG_PRESS_LSB 0xF8
-#define BME280_REG_PRESS_MSB 0xF7
-#define BME280_REG_CONFIG 0xF5       // Control reg: partial read/write
-#define BME280_REG_CTRL_MEAS 0xF4    // Control reg: read/write
-#define BME280_REG_STATUS 0xF3       // Status reg: partial read only
-#define BME280_REG_CTRL_HUM 0xF2     // Control reg: partial read/write
-#define BME280_REG_CALIB_B_LENGTH 16 // Number of registers used for calibration data (section B)
-#define BME280_REG_CALIB_B_BASE 0xE1 // Base address of all registers with calibration data (section B)
-#define BME280_REG_RESET 0xE0        // Reset reg: write only
-#define BME280_REG_ID 0xD0           // Chip ID: read only
-#define BME280_REG_CALIB_A_LENGTH 26 // Number of registers used for calibration data (section A)
-#define BME280_REG_CALIB_A_BASE 0x88 // Base address of all registers with calibration data (section A)
-
     I2CBus_t i2c;
     I2CBusConfig_t cfg = {
         .i2c_adapter = 1, // On RPI the I2C adapter is mounted as '/dev/i2c-1'
@@ -371,26 +355,49 @@ void test_i2c_bus() {
     log_info("i2c_bus_deinit called and returned %d", err);
 }
 
-void test_sensor() {
+void test_bme280() {
     HwInterface_t hw_interface_i2c;
     HwInterfaceError_t h_ret = hw_interface_init(&hw_interface_i2c, HW_INTERFACE_I2C);
     log_info("hw_interface_init called and returned %d", h_ret);
 
-    Sensor_t s_bme280_1;
+    Bme280_t s_bme280_1;
     SensorError_t s_ret = bme280_init(&s_bme280_1, 0x76, hw_interface_i2c);
     log_info("bme280_init called and returned %d", s_ret);
 
-    // Sensor.get_reading() -> bme280_get_reading() -> bme280_get_temp() -> hw_interface_read() -> i2c_bus_read()
-    SensorOutput_t out;
-    s_ret = s_bme280_1.get_reading(&s_bme280_1, SENSOR_MEASUREMENT_TEMP, &out);
-    log_info("get_reading called and returned %d (out: %f)", s_ret, out.temp);
+    float temp, hum, press;
+    s_ret = bme280_get_temp(&s_bme280_1, &temp);
+    log_info("bme280_get_temp called and returned %d (out: %.2f *C)", s_ret, temp);
 
-    s_ret = s_bme280_1.get_status(&s_bme280_1);
-    log_info("get_status called and returned %d", s_ret);
+    s_ret = bme280_get_hum(&s_bme280_1, &hum);
+    log_info("bme280_get_hum called and returned %d (out: %.2f %%)", s_ret, hum);
 
-    s_ret = s_bme280_1.deinit(&s_bme280_1);
+    s_ret = bme280_get_press(&s_bme280_1, &press);
+    log_info("bme280_get_press called and returned %d (out: %.2f Pa)", s_ret, press);
+
+    s_ret = bme280_check_id(&s_bme280_1);
+    log_info("bme280_check_id called and returned %d", s_ret);
+
+    s_ret = bme280_deinit(&s_bme280_1);
     log_info("deinit called and returned %d", s_ret);
 
     h_ret = hw_interface_deinit(&hw_interface_i2c);
     log_info("hw_interface_deinit called and returned %d", h_ret);
+}
+
+void test_gpio() {
+    Gpio_t ctx;
+    log_info("gpio_init called and returned %d", gpio_init(&ctx));
+
+    log_info("gpio_set (pin: 17, state: HIGH) called and returned %d", gpio_set(&ctx, 17, 1));
+    log_info("gpio_set (pin: 27, state: LOW) called and returned %d", gpio_set(&ctx, 27, 0));
+    log_info("gpio_set (pin: 22, state: HIGH) called and returned %d", gpio_set(&ctx, 22, 1));
+
+    uint8_t state;
+    GpioError_t err = gpio_get(&ctx, 5, &state);
+    log_info("gpio_set (pin: 5, state: %hu) called and returned %d", state, err);
+
+    err = gpio_get(&ctx, 6, &state);
+    log_info("gpio_set (pin: 6, state: %hu) called and returned %d", state, err);
+
+    log_info("gpio_deinit called and returned %d", gpio_deinit(&ctx));
 }
