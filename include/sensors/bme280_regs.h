@@ -29,7 +29,7 @@
 #define BME280_REG_CALIB_B_BASE 0xE1 // Base address of all registers with calibration data (section B)
 #define BME280_REG_RESET 0xE0        // Reset reg: write only
 #define BME280_REG_ID 0xD0           // Chip ID: read only
-#define BME280_REG_CALIB_A_LENGTH 25 // Number of registers used for calibration data (section A)
+#define BME280_REG_CALIB_A_LENGTH 26 // Number of registers used for calibration data (section A)
 #define BME280_REG_CALIB_A_BASE 0x88 // Base address of all registers with calibration data (section A)
 
 // Calibration data
