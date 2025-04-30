@@ -263,16 +263,17 @@ STATIC SensorError_t bme280_read_trim_params(Bme280_t* ctx) {
     calib->dig_P7 = (int16_t)(d[19] << 8 | d[18]); // 0x9A and 0x9B
     calib->dig_P8 = (int16_t)(d[21] << 8 | d[20]); // 0x9C and 0x9D
     calib->dig_P9 = (int16_t)(d[23] << 8 | d[22]); // 0x9E and 0x9F
+    (void)d[24];                                   // 0xA0 should be ignored (do not store any relevant data)
 
     // Humidity compensation
-    calib->dig_H1 = d[24];                         // 0xA1
-    calib->dig_H2 = (int16_t)(d[26] << 8 | d[25]); // 0xE1 and 0xE2
-    calib->dig_H3 = d[27];                         // 0xE3
+    calib->dig_H1 = d[25];                         // 0xA1
+    calib->dig_H2 = (int16_t)(d[27] << 8 | d[26]); // 0xE1 and 0xE2
+    calib->dig_H3 = d[28];                         // 0xE3
     // H4 is split across 0xE4 and 0xE5[3:0]
-    calib->dig_H4 = (int16_t)((d[28] << 4) | (d[29] & 0x0F)); // 0xE4 << 4 | (0xE5 & 0x0F)
+    calib->dig_H4 = (int16_t)((d[29] << 4) | (d[30] & 0x0F)); // 0xE4 << 4 | (0xE5 & 0x0F)
     // H5 is split across 0xE5[7:4] and 0xE6
-    calib->dig_H5 = (int16_t)((d[30] << 4) | (d[29] >> 4)); // 0xE6 << 4 | (0xE5 >> 4)
-    calib->dig_H6 = (int8_t)d[31];                          // 0xE7
+    calib->dig_H5 = (int16_t)((d[31] << 4) | (d[30] >> 4)); // 0xE6 << 4 | (0xE5 >> 4)
+    calib->dig_H6 = (int8_t)d[32];                          // 0xE7
 
     return SENSOR_ERR_OK;
 }
