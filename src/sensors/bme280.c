@@ -361,28 +361,19 @@ STATIC Bme280_u32_t BME280_compensate_P_int64(Trim_t trim, Bme280_s32_t adc_P, B
 STATIC Bme280_u32_t bme280_compensate_H_int32(Trim_t trim, Bme280_s32_t adc_H, Bme280_s32_t t_fine) {
     Bme280_s32_t v_x1_u32r;
 
-    v_x1_u32r = t_fine - ((Bme280_s32_t)76800);
-
-    Bme280_s32_t tmp1 =
-    (((adc_H << 14) - (((Bme280_s32_t)trim.dig_H4) << 20) - (((Bme280_s32_t)trim.dig_H5) * v_x1_u32r)) +
-     ((Bme280_s32_t)16384)) >>
-    15;
-
-    Bme280_s32_t tmp2 = (((((v_x1_u32r * ((Bme280_s32_t)trim.dig_H6)) >> 10) *
-                           (((v_x1_u32r * ((Bme280_s32_t)trim.dig_H3)) >> 11) + ((Bme280_s32_t)32768))) >>
-                          10) +
-                         ((Bme280_s32_t)2097152)) *
-                        ((Bme280_s32_t)trim.dig_H2) +
-                        8192;
-
-    v_x1_u32r = (tmp1 * tmp2) >> 14;
-
-    v_x1_u32r -= (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) * ((Bme280_s32_t)trim.dig_H1)) >> 4);
-
-    if(v_x1_u32r < 0)
-        v_x1_u32r = 0;
-    else if(v_x1_u32r > 419430400)
-        v_x1_u32r = 419430400;
-
+    v_x1_u32r = (t_fine - ((Bme280_s32_t)76800));
+    v_x1_u32r = (((((adc_H << 14) - (((Bme280_s32_t)trim.dig_H4) << 20) - (((Bme280_s32_t)trim.dig_H5) * v_x1_u32r)) +
+                   ((Bme280_s32_t)16384)) >>
+                  15) *
+                 (((((((v_x1_u32r * ((Bme280_s32_t)trim.dig_H6)) >> 10) *
+                      (((v_x1_u32r * ((Bme280_s32_t)trim.dig_H3)) >> 11) + ((Bme280_s32_t)32768))) >>
+                     10) +
+                    ((Bme280_s32_t)2097152)) *
+                   ((Bme280_s32_t)trim.dig_H2) +
+                   8192) >>
+                  14));
+    v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) * ((Bme280_s32_t)trim.dig_H1)) >> 4));
+    v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
+    v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
     return (Bme280_u32_t)(v_x1_u32r >> 12);
 }
