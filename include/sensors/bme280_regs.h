@@ -56,8 +56,10 @@
 #define BME280_FILTER_OFF 0            // b000 for turning off the filter
 #define BME280_SPI3W_ENABLED 1         // b1 for enabling 3-wire SPI interface
 #define BME280_SPI3W_DISABLED 0        // b0 for disabling 3-wire SPI interface
-#define BME280_STANDBY_MAX_TIME 7      // b111 for 20 ms standby time
+#define BME280_STANDBY_20_MS 7         // b111 for 20 ms standby time
 #define BME280_OSRS_MAX_OVERSAMPLING 5 // b101 for oversampling x16
+#define BME280_OSRS_NO_OVERSAMPLING 1  // b001 for oversampling x1
+#define BME280_FORCED_MODE 1           // b01 for forced mode
 #define BME280_NORMAL_MODE 3           // b11 for normal mode
 
 // Structure definitions for registers divided into multiple regions via bitfields

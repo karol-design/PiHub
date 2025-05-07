@@ -8,11 +8,12 @@
 #include "utils/config.h"
 #include "utils/log.h"
 
-#define BME280_ID 0x60                // Device ID common for all BME280 sensors
-#define BME280_TEMP_SCALE 100.0f      // Temperature scale from x100 *C to *C
-#define BME280_PRESS_SCALE 256.0f     // Pressure scale from Q24.8 to float
-#define BME280_HUM_SCALE 1024.0f      // Humidity scale from Q22.10 format to percents
-#define BME280_SOFT_RESET_DELAY_MS 10 // Obligatory delay after a soft reset is performed
+#define BME280_ID 0x60                      // Device ID common for all BME280 sensors
+#define BME280_TEMP_SCALE 100.0f            // Temperature scale from x100 *C to *C
+#define BME280_PRESS_SCALE 256.0f           // Pressure scale from Q24.8 to float
+#define BME280_HUM_SCALE 1024.0f            // Humidity scale from Q22.10 format to percents
+#define BME280_STANDBY BME280_STANDBY_20_MS // Standby (inactivity) period hex value
+#define BME280_RESET_DELAY_MS 20            // Delay after each reset
 
 typedef int32_t Bme280_s32_t;
 typedef uint32_t Bme280_u32_t;
@@ -98,27 +99,38 @@ SensorError_t bme280_init(Bme280_t* ctx, const uint8_t addr, HwInterface_t hw_ct
         return s_ret;
     }
 
+    // Configure standby, filter and interface
+    // Set: 20ms standby; filter off; 3-wire SPI off
+    ConfigReg_t config_reg = { .b.filter = BME280_FILTER_OFF, .b.t_sb = BME280_STANDBY, .b.spi3w_en = BME280_SPI3W_DISABLED };
+    HwInterfaceError_t h_ret =
+    hw_interface_write(&hw_ctx, addr, BME280_REG_CONFIG, &config_reg.w, sizeof(config_reg.w));
+    if(h_ret != HW_INTERFACE_ERR_OK) {
+        log_error("failed to write to the Config reg (err: %d)", h_ret);
+        return SENSOR_ERR_HW_INTERFACE_FAILURE;
+    }
+
+    // Enable and configure humidity measurements
+    // Set: max oversampling (x16) on humidity; Changes to this reg only become effective after a write operation to “ctrl_meas”!
+    CtrlHumReg_t ctrl_hum_reg = { .b.osrs_h = BME280_OSRS_MAX_OVERSAMPLING };
+    h_ret = hw_interface_write(&hw_ctx, addr, BME280_REG_CTRL_HUM, &ctrl_hum_reg.w, sizeof(ctrl_hum_reg.w));
+    if(h_ret != HW_INTERFACE_ERR_OK) {
+        log_error("failed to write to the CtrlHum reg (err: %d)", h_ret);
+        return SENSOR_ERR_HW_INTERFACE_FAILURE;
+    }
+
+    // Enable and configure pressure and temperature measurements
     // Set: max oversampling (x16) on temp and press measurements; Normal mode
     CtrlMeasReg_t ctrl_meas_reg = { .b.osrs_p = BME280_OSRS_MAX_OVERSAMPLING,
         .b.osrs_t = BME280_OSRS_MAX_OVERSAMPLING,
         .b.mode = BME280_NORMAL_MODE };
-    HwInterfaceError_t h_ret =
-    hw_interface_write(&hw_ctx, addr, BME280_REG_CTRL_MEAS, &ctrl_meas_reg.w, sizeof(ctrl_meas_reg.w));
+    h_ret = hw_interface_write(&hw_ctx, addr, BME280_REG_CTRL_MEAS, &ctrl_meas_reg.w, sizeof(ctrl_meas_reg.w));
     if(h_ret != HW_INTERFACE_ERR_OK) {
         log_error("failed to write to the CtrlMeas reg (err: %d)", h_ret);
         return SENSOR_ERR_HW_INTERFACE_FAILURE;
     }
 
-    // Wait for at least 10 ms after a soft reset (as recommended in the BME280 datasheet)
-    usleep((useconds_t)BME280_SOFT_RESET_DELAY_MS * 1000);
-
-    // Set: max standby (20ms); filter off; 3-wire SPI off
-    ConfigReg_t config_reg = { .b.filter = BME280_FILTER_OFF, .b.t_sb = BME280_STANDBY_MAX_TIME, .b.spi3w_en = BME280_SPI3W_DISABLED };
-    h_ret = hw_interface_write(&hw_ctx, addr, BME280_REG_CONFIG, &config_reg.w, sizeof(config_reg.w));
-    if(h_ret != HW_INTERFACE_ERR_OK) {
-        log_error("failed to write to the Config reg (err: %d)", h_ret);
-        return SENSOR_ERR_HW_INTERFACE_FAILURE;
-    }
+    // Apply a configured delay after a reset (at least one standby period)
+    usleep((useconds_t)BME280_RESET_DELAY_MS * 1000);
 
     // Read trim (calibration) parameters
     s_ret = bme280_read_trim_params(ctx);
@@ -284,6 +296,8 @@ STATIC SensorError_t bme280_data_readout(Bme280_t* ctx, Bme280_output_t* out) {
     } else if(!ctx->is_initialized) {
         return SENSOR_ERR_NOT_INITIALIZED;
     }
+
+    // @TODO: An additional check for the reset value (0x80) should be made to verify if the output is valid
 
     uint8_t buf[BME280_REG_DATA_LENGTH];
 
