@@ -2,6 +2,7 @@
 #include <unistd.h> // For: sleep()
 
 #include "app/dispatcher.h"
+#include "app/sysstat.h"
 #include "comm/network.h"
 #include "hw/gpio.h"
 #include "hw/hw_interface.h"
@@ -20,14 +21,16 @@ void test_ll();
 void test_i2c_bus();
 void test_bme280();
 void test_gpio();
+void test_sysstat();
 
 int main() {
     // test_dispatcher();
     // test_ll();
     // test_server();
     // test_i2c_bus();
-    test_bme280();
-    test_gpio();
+    // test_bme280();
+    // test_gpio();
+    test_sysstat();
     return 0;
 }
 
@@ -400,4 +403,24 @@ void test_gpio() {
     log_info("gpio_set (pin: 6, state: %hu) called and returned %d", state, err);
 
     log_info("gpio_deinit called and returned %d", gpio_deinit(&ctx));
+}
+
+void test_sysstat() {
+    SysstatUptimeInfo_t t;
+    SysstatMemInfo_t m;
+    SysstatNetInfo_t n;
+
+    SysstatError_t err = sysstat_get_uptime_info(&t);
+    log_info("sysstat_get_uptime_info called and returned %d", err);
+
+    err = sysstat_get_mem_info(&m);
+    log_info("sysstat_get_mem_info called and returned %d", err);
+
+    err = sysstat_get_net_info("eth0", &n);
+    log_info("sysstat_get_net_info called and returned %d", err);
+
+    log_info("up: %u.%hu, iddle: %u.%hu", t.up.s, t.up.ms, t.idle.s, t.idle.ms);
+    log_info("total: %lu kB, free: %lu kB, available: %lu kB", m.total_kB, m.free_kB, m.available_kB);
+    log_info("sent %lu kB (%lu) | received %lu kB (%lu)", (n.tx_bytes / 1000), n.tx_packets,
+    (n.rx_bytes / 1000), n.rx_packets);
 }
