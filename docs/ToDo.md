@@ -1,16 +1,8 @@
 ## ToDo:
-- Finish the component for BME280 (get_temp, get_hum, get_press) and fix commenting in i2c/hw/sensor/bme280 [6h]
-- Implement GPIO support [8h]
-- Implement SPI support and complete hw_interface component [6h]
-- Implement System stats support [8h]
 - Implement core app logic (setup; command handling; shutdown) [16h]
+- Implement SPI support and complete hw_interface component [6h]    
 - (opt) Learn python fundamentals and develop a client script [24h]
-
-## Identified problems / improvements
-- build automation: add build/debug/test integration to Cmake or VScode
-- unit tests: should include checks whether mutexes are taken and !released
-- server: When client worker thread receives the disconnect signal it eventually destroys its mutex, but at this time it can be already taken by another thread (e.g. main, which wants to write to that client);
-- server: The shutdown procedure could use a semaphore to wait for all client threads to finish (!)
+- Design the electronics for the project (can be breadboards) [8h]
 
 ## Usefull commands
 > ./build.sh --run
@@ -27,11 +19,19 @@
 > sudo i2cget -y 1 0x76 0xD0 (To check the status register)
 > sudo i2cdump -y 1 0x76 (To read and dump the content of all registers)
 
+> eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_ed25519_gitlabua
+
+## Identified problems / improvements
+- build automation: add build/debug/test integration to Cmake or VScode
+- unit tests: should include checks whether mutexes are taken and !released
+- server: When client worker thread receives the disconnect signal it eventually destroys its mutex, but at this time it can be already taken by another thread (e.g. main, which wants to write to that client);
+- server: The shutdown procedure could use a semaphore to wait for all client threads to finish (!)
+
 ## Optional improvements
 - Add compiler specification to CMakeLists.txt
 - I could add a Cat.M/NB-IoT module to the RPI; install Ofono, use a SIM with a static IP and make the whole server completely remote (e.g. for farming)
 
-## TO consider with each component:
+## To consider with each component:
 - API architecture
 - Threads, shared resources and synchronisation
 - Error handling procedures
@@ -44,9 +44,10 @@
 3) llist
 4) log [opt]
 5) i2c & sensor
+6) bme280
+7) gpio
+8) system (partially)
 
 ## ToDo:
-1) bme280
-2) gpio
-3) system
-4) piHub
+1) SPI
+2) piHub
