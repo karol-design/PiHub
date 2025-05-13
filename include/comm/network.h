@@ -159,10 +159,9 @@ ListNode_t* server_get_clients(Server_t* ctx);
  * @brief Disconnect a client
  * @param[in]  ctx  Pointer to the Server instance
  * @param[in]  client  Handle of the client to be disconnected
- * @param[in]  no_disconnect  Flag indicating whether on_disconnect callback should be invoked (can cause deadlock, e.g. when called by shutdown())
  * @return SERVER_ERR_OK on success, SERVER_ERR_NET_FAILURE otherwise
  */
-ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool no_callback);
+ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client);
 
 /**
  * @brief Disconnect all clients and request the listening thread to exit via eventfd

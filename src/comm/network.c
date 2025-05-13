@@ -154,14 +154,6 @@ ServerError_t server_read(Server_t* ctx, ServerClient_t client, uint8_t* buf, co
     }
 
     if(*len <= 0) {
-        log_info("client (fd: %d) disconnected from the server", client.fd);
-
-        // Clean resources and disconnect the client (issue an eventfd "disconnect request" event)
-        ServerError_t err = server_disconnect(ctx, client, false);
-        if(err != SERVER_ERR_OK) {
-            log_error("server_disconnect failed (returned: %d)", err);
-            return err;
-        }
         return SERVER_ERR_CLIENT_DISCONNECTED;
     }
 
@@ -233,7 +225,7 @@ ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, const size_t 
     return SERVER_ERR_OK;
 }
 
-ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool no_callback) {
+ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client) {
     if(!ctx) {
         return SERVER_ERR_NULL_ARGUMENT;
     }
@@ -244,17 +236,6 @@ ServerError_t server_disconnect(Server_t* ctx, const ServerClient_t client, bool
     if(ret != sizeof(signal_value)) {
         log_error("failed to write to disconnect_eventfd (err: %s)", strerror(errno));
         return SERVER_ERR_EVENTFD_FAILURE;
-    }
-
-    ListError_t err = ctx->clients_list.remove(&ctx->clients_list, &client);
-    if(err != LIST_ERR_OK) {
-        log_error("failed to remove the client from the clients_list (err: %d)", err);
-        return SERVER_ERR_LLIST_FAILURE;
-    }
-
-    if(!no_callback) {
-        // Call "client disconnect" handler
-        ctx->cfg.cb_list.on_client_disconnect(ctx, client);
     }
 
     return SERVER_ERR_OK;
@@ -281,7 +262,7 @@ ServerError_t server_shutdown(Server_t* ctx) {
     while(node) {
         client = (ServerClient_t*)node->data;
         node = node->next;
-        err = server_disconnect(ctx, *client, true);
+        err = server_disconnect(ctx, *client);
         if(err != SERVER_ERR_OK) {
             return err;
         }
@@ -520,6 +501,7 @@ STATIC void* server_client_handler(void* arg) {
 
     ServerClient_t client = ((ClientHandlerArgs_t*)arg)->client;
     Server_t* server = ((ClientHandlerArgs_t*)arg)->server;
+    bool self_disconnect = false;
 
     // Initialise epoll that will monitor the client file descriptor (required, since read is handled in separate function)
     struct epoll_event ev, events[2]; // Max two events are expected at a time (socket fd and disconnect event fd)
@@ -559,10 +541,25 @@ STATIC void* server_client_handler(void* arg) {
 
         for(int i = 0; i < num_events; i++) {
             if(events[i].data.fd == client.fd) {
-                // Handle client data
-                server->cfg.cb_list.on_data_received(server, client);
-            } else if(events[i].data.fd == client.disconnect_eventfd) {
+                // Check if the client has sent new data or disconnected
+                char tmp;
+                ssize_t peek_ret = recv(client.fd, &tmp, 1, MSG_PEEK | MSG_DONTWAIT);
+                if(peek_ret == 0) {
+                    // Client has disconnected, trigger disconnect procedure
+                    self_disconnect = true;
+                } else if(peek_ret < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+                    // Error, treat as disconnect
+                    self_disconnect = true;
+                } else {
+                    // Only call on_data_received if there is data
+                    server->cfg.cb_list.on_data_received(server, client);
+                }
+            }
+
+            if(events[i].data.fd == client.disconnect_eventfd || self_disconnect == true) {
                 // Disconnect signal received
+                log_info("client (fd: %d) to be disconnected from the server", client.fd);
+
                 int err = close(client.fd); // Close client socket
                 if(err != 0) {
                     log_error("close() returned: -1 (err: %s)", strerror(errno));
@@ -575,12 +572,21 @@ STATIC void* server_client_handler(void* arg) {
                 if(err != 0) {
                     log_error("close() returned: -1 (err: %s)", strerror(errno));
                 }
+                err += (int)server->clients_list.remove(&server->clients_list, &client); // Remove client from the server's clients list
+                if(err != LIST_ERR_OK) {
+                    log_error("failed to remove the client from the clients_list (err: %d)", err);
+                }
                 if(err != 0) {
                     server->cfg.cb_list.on_server_failure(server, SERVER_ERR_GENERIC); // Failure when cleaning client's resources
                 }
                 err += pthread_mutex_destroy(&client.lock); // Destroy the lock (@TODO: improve mutex destroy algorithm)
                 if(err != 0) {
                     log_error("pthread_mutex_destroy() returned %d", err);
+                }
+
+                if(self_disconnect) {
+                    // Call "client disconnect" handler only on self disconnect (not on forced disconnect or during shutdown)
+                    server->cfg.cb_list.on_client_disconnect(server, client);
                 }
 
                 log_info("exiting client thread (id: %lu, fd: %d)", client.thread, client.fd);
