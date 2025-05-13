@@ -173,7 +173,7 @@ DispatcherError_t dispatcher_deregister(Dispatcher_t* ctx, const uint32_t id) {
     return DISPATCHER_ERR_OK;
 }
 
-DispatcherError_t dispatcher_execute(Dispatcher_t* ctx, const char* buf) {
+DispatcherError_t dispatcher_execute(Dispatcher_t* ctx, const char* buf, const void* cmd_ctx) {
     if(!ctx || !buf) {
         return DISPATCHER_ERR_NULL_ARG;
     } else if(strnlen(buf, DISPATCHER_MAX_BUF_SIZE) >= DISPATCHER_MAX_BUF_SIZE) {
@@ -206,7 +206,7 @@ DispatcherError_t dispatcher_execute(Dispatcher_t* ctx, const char* buf) {
                     err = DISPATCHER_ERR_NULL_ARG;
                     break;
                 }
-                ctx->cmd_list[cmd_no].cfg.callback_ptr((char*)tokens.argv, tokens.argc);
+                ctx->cmd_list[cmd_no].cfg.callback_ptr((char*)tokens.argv, tokens.argc, cmd_ctx);
                 break; // Finish the search on the first cmd that matched
             }
         }

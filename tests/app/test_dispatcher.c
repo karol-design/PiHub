@@ -14,7 +14,7 @@
 extern DispatcherError_t dispatcher_init(Dispatcher_t* ctx, const DispatcherConfig_t cfg);
 extern DispatcherError_t dispatcher_register(Dispatcher_t* ctx, const uint32_t id, const DispatcherCommandDef_t cmd);
 extern DispatcherError_t dispatcher_deregister(Dispatcher_t* ctx, const uint32_t id);
-extern DispatcherError_t dispatcher_execute(Dispatcher_t* ctx, const char* buf);
+extern DispatcherError_t dispatcher_execute(Dispatcher_t* ctx, const char* buf, const void* cmd_ctx);
 extern DispatcherError_t dispatcher_deinit(Dispatcher_t* ctx);
 
 /********************* Auxiliary functions *********************/
@@ -22,7 +22,7 @@ extern DispatcherError_t dispatcher_deinit(Dispatcher_t* ctx);
 /**
  * @brief A generic callback function used for testing purposes.
  */
-void generic_callback(char* argv, uint32_t argc) {
+void generic_callback(char* argv, uint32_t argc, const void* cmd_ctx) {
 }
 
 static Dispatcher_t test_dispatcher;
@@ -106,17 +106,17 @@ static void test_dispatcher_register_invalid_index(void** state) {
 static void test_dispatcher_execute_success(void** state) {
     DispatcherCommandDef_t cmd = { .target = "gpio", .action = "set", .callback_ptr = generic_callback };
     dispatcher_register(&test_dispatcher, (uint32_t)0, cmd);
-    assert_int_equal(dispatcher_execute(&test_dispatcher, "gpio set 13 1"), DISPATCHER_ERR_OK);
+    assert_int_equal(dispatcher_execute(&test_dispatcher, "gpio set 13 1", NULL), DISPATCHER_ERR_OK);
 }
 
 /* Executing a NULL buffer should fail */
 static void test_dispatcher_execute_null_buf(void** state) {
-    assert_int_equal(dispatcher_execute(&test_dispatcher, NULL), DISPATCHER_ERR_NULL_ARG);
+    assert_int_equal(dispatcher_execute(&test_dispatcher, NULL, NULL), DISPATCHER_ERR_NULL_ARG);
 }
 
 /* Executing an empty buffer should return error */
 static void test_dispatcher_execute_empty_buf(void** state) {
-    assert_int_equal(dispatcher_execute(&test_dispatcher, ""), DISPATCHER_ERR_BUF_EMPTY);
+    assert_int_equal(dispatcher_execute(&test_dispatcher, "", NULL), DISPATCHER_ERR_BUF_EMPTY);
 }
 
 /* Dispatcher should reject an overly long buffer */
@@ -124,7 +124,7 @@ static void test_dispatcher_execute_long_buf(void** state) {
     char long_buf[DISPATCHER_MAX_BUF_SIZE + 1];
     memset(long_buf, 'A', DISPATCHER_MAX_BUF_SIZE);
     long_buf[DISPATCHER_MAX_BUF_SIZE] = '\0';
-    assert_int_equal(dispatcher_execute(&test_dispatcher, long_buf), DISPATCHER_ERR_BUF_TOO_LONG);
+    assert_int_equal(dispatcher_execute(&test_dispatcher, long_buf, NULL), DISPATCHER_ERR_BUF_TOO_LONG);
 }
 
 /* Removing a command should succeed */
@@ -161,7 +161,7 @@ static void test_dispatcher_functional_test(void** state) {
     for(uint32_t i = 0; i < FUNC_TEST_CMD_COUNT; i++) {
         char buf[DISPATCHER_MAX_BUF_SIZE];
         snprintf(buf, sizeof(buf), "%s %s p1 p2 p3", target[i], action[i]); // Test also optional parameters
-        assert_int_equal(dispatcher_execute(&test_dispatcher, buf), DISPATCHER_ERR_OK);
+        assert_int_equal(dispatcher_execute(&test_dispatcher, buf, NULL), DISPATCHER_ERR_OK);
     }
 
     // Test removing the commands

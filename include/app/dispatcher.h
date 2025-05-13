@@ -51,9 +51,9 @@ typedef struct {
 } DispatcherConfig_t;
 
 typedef struct {
-    char target[DISPATCHER_TARGET_MAX_SIZE];         // Target token, e.g. "gpio", "sensor", "server"
-    char action[DISPATCHER_ACTION_MAX_SIZE];         // Action token, e.g. "set", "get", "status"
-    void (*callback_ptr)(char* argv, uint32_t argc); // Pointer to the command handler
+    char target[DISPATCHER_TARGET_MAX_SIZE]; // Target token, e.g. "gpio", "sensor", "server"
+    char action[DISPATCHER_ACTION_MAX_SIZE]; // Action token, e.g. "set", "get", "status"
+    void (*callback_ptr)(char* argv, uint32_t argc, const void* cmd_ctx); // Pointer to the command handler
 } DispatcherCommandDef_t;
 
 typedef struct {
@@ -99,11 +99,12 @@ DispatcherError_t dispatcher_deregister(Dispatcher_t* ctx, const uint32_t id);
  * @brief Tokenize, validate and parse a command, then call the associated callback
  * @param[in, out]  ctx  Pointer to the Dispatcher instance
  * @param[in]  buf  NULL terminated character string with the command to be parsed
+ * @param[in] cmd_ctx Pointer to the command execution context (e.g. details of the server's client that invoked this command)
  * @return DISPATCHER_ERR_OK on success, DISPATCHER_ERR_NULL_ARG / DISPATCHER_ERR_BUF_TOO_LONG / DISPATCHER_ERR_BUF_EMPTY /
  * DISPATCHER_ERR_CMD_INCOMPLETE / DISPATCHER_ERR_TOKEN_TOO_LONG / DISPATCHER_ERR_PTHREAD_FAILURE otherwise
  * @note Dispatcher will associate the parsed buf with the first cmd from the list that matches target and action
  */
-DispatcherError_t dispatcher_execute(Dispatcher_t* ctx, const char* buf);
+DispatcherError_t dispatcher_execute(Dispatcher_t* ctx, const char* buf, const void* cmd_ctx);
 
 /**
  * @brief Deinit the dispatcher (destroy the mutex)
