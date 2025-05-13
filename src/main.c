@@ -1,6 +1,7 @@
 #include <string.h> // For: strlen()
 #include <unistd.h> // For: sleep()
 
+#include "app/app.h"
 #include "app/dispatcher.h"
 #include "app/sysstat.h"
 #include "comm/network.h"
@@ -22,6 +23,10 @@ void test_i2c_bus();
 void test_bme280();
 void test_gpio();
 void test_sysstat();
+void test_app();
+
+// #define TEST_SERVER
+// #define TEST_DISPATCHER
 
 int main() {
     // test_dispatcher();
@@ -30,11 +35,14 @@ int main() {
     // test_i2c_bus();
     // test_bme280();
     // test_gpio();
-    test_sysstat();
+    // test_sysstat();
+    test_app();
     return 0;
 }
 
+
 /************* Event handlers for Server *************/
+#ifdef TEST_SERVER
 
 void handle_client_connect(void* ctx, const ServerClient_t client) {
     log_info("handle_client_connect called");
@@ -92,7 +100,11 @@ void handle_server_failure(void* ctx, const ServerError_t err) {
     log_debug("server_run called (ret: %d)", err);
 }
 
+#endif // TEST_SERVER
+
+
 /************* Event handlers for Dispatcher *************/
+#ifdef TEST_DISPATCHER
 
 void handle_gpio_set(char* argv, uint32_t argc) {
     log_info("handle_gpio_set called");
@@ -124,6 +136,8 @@ void handle_sensor_list(char* argv, uint32_t argc) {
     }
 }
 
+#endif // TEST_DISPATCHER
+
 /************* Compare and print callbacks for List *************/
 
 int compare_data(const void* a, const void* b) {
@@ -138,6 +152,7 @@ ListError_t print_node(void* data) {
 /************* Functional tests *************/
 
 void test_dispatcher() {
+#ifdef TEST_DISPATCHER
     Dispatcher_t dispatcher;
     DispatcherConfig_t cfg = { .delim = " " };
     DispatcherCommandDef_t gpio_set_cmd = { .target = "gpio", .action = "set", .callback_ptr = handle_gpio_set };
@@ -203,9 +218,11 @@ void test_dispatcher() {
 
     err = dispatcher_deinit(&dispatcher);
     log_info("dispatcher_deinit called (ret %d)", err);
+#endif // TEST_DISPATCHER
 }
 
 void test_server() {
+#ifdef TEST_SERVER
     ServerCallbackList_t server_cb_list = { .on_client_connect = handle_client_connect,
         .on_client_disconnect = handle_client_disconnect,
         .on_data_received = handle_data_received,
@@ -257,6 +274,7 @@ void test_server() {
     log_info("server_deinit called (ret: %d)", err);
 
     sleep(5);
+#endif // TEST_SERVER
 }
 
 void test_ll() {
@@ -423,4 +441,22 @@ void test_sysstat() {
     log_info("total: %lu kB, free: %lu kB, available: %lu kB", m.total_kB, m.free_kB, m.available_kB);
     log_info("sent %lu kB (%lu) | received %lu kB (%lu)", (n.tx_bytes / 1000), n.tx_packets,
     (n.rx_bytes / 1000), n.rx_packets);
+}
+
+void test_app() {
+    AppError_t err = app_init();
+    log_info("app_init called and returned %d", err);
+
+    err = app_run();
+    log_info("app_run called and returned %d", err);
+
+    sleep(100);
+
+    err = app_stop();
+    log_info("app_stop called and returned %d", err);
+
+    sleep(10);
+
+    err = app_deinit();
+    log_info("app_deinit called and returned %d", err);
 }
