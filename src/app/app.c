@@ -3,6 +3,7 @@
 #include <string.h> // for: memset
 #include <unistd.h> // For: sleep()
 
+#include "app/sysstat.h"
 #include "utils/common.h"
 #include "utils/log.h"
 
@@ -12,22 +13,23 @@
 #define APP_SERVER_MAX_CLIENTS 5          // Maximum number of clients connected at the same time
 #define APP_SERVER_MAX_CONN_REQUESTS 10   // Maximum number of pending connection reuqests
 #define APP_SERVER_RECV_DATA_BUF_SIZE 128 // Size of the buffer for new data from the clients
+#define NET_INTERFACE_NAME "eth0"         // Name of the network interface
 
 #define APP_DISPATCHER_DELIM " " // Delimiter in commands handled by the dispatcher
 
 #define APP_PIHUB_INFO_MSG "[PiHub] info: "
 #define APP_PIHUB_ERROR_MSG "[PiHub] error: "
+#define APP_PIHUB_PROMPT_CHAR "> "
 
-#define APP_DISCONNECT_MSG \
-    APP_PIHUB_INFO_MSG "one of the clients disconnected\n" // Msg broadcasted on disconnect
-#define APP_CONNECT_MSG_BUF_SIZE 64                        // New connection buffer size
-#define APP_CONNECT_MSG " connected to the server\n"       // Msg broadcasted on new connection
-#define APP_WELCOME_MSG "Welcome to PiHub!\n"              // Msg sent to all new clients on connection
+#define APP_TEMP_MSG_BUF_SIZE 1024 // Size of the generic temp buffer for building message strings
+#define APP_DISCONNECT_MSG "one of the clients disconnected" // Msg broadcasted on disconnect
+#define APP_CONNECT_MSG_BUF_SIZE 64                          // New connection buffer size
+#define APP_CONNECT_MSG " connected to the server"           // Msg broadcasted on new connection
+#define APP_WELCOME_MSG "Welcome to PiHub!"                  // Msg sent to all new clients on connection
 
-#define APP_GENERIC_FAILURE_MSG APP_PIHUB_ERROR_MSG "generic system failure\n"
-#define APP_CMD_INCOMPLETE_MSG APP_PIHUB_ERROR_MSG "command incomplete\n"
-#define APP_CMD_ERR_MSG \
-    APP_PIHUB_ERROR_MSG "command not found (incorrect cmd / buffer empty or overflow / token too long)\n"
+#define APP_GENERIC_FAILURE_MSG "generic system failure"
+#define APP_CMD_INCOMPLETE_MSG "command incomplete"
+#define APP_CMD_ERR_MSG "command not found (incorrect cmd / buffer empty or overflow / token too long)"
 
 
 // Function prototypes (declarations)
@@ -54,6 +56,49 @@ typedef struct {
 /* Shared app context! */
 static App_t app_ctx;
 
+typedef enum { APP_MSG_TYPE_INFO = 0x00, APP_MSG_TYPE_ERROR } AppMsgType_t;
+
+// Generic function for sending PiHub messages to the client (buf has to be a NULL terminated string no longer than APP_TEMP_MSG_BUF_SIZE!)
+void app_send_to_client(const ServerClient_t* client, const char* buf, AppMsgType_t type) {
+    char tmp_buf[APP_TEMP_MSG_BUF_SIZE] = "";
+
+    // Start the message with PiHub msg type
+    if(type == APP_MSG_TYPE_ERROR) {
+        strcat(tmp_buf, APP_PIHUB_ERROR_MSG);
+    } else {
+        strcat(tmp_buf, APP_PIHUB_INFO_MSG);
+    }
+
+    // Concatenate the actual message and add a new line character
+    strcat(tmp_buf, buf);
+    strcat(tmp_buf, "\n");
+
+    ServerError_t err_s = server_write(&app_ctx.server, *client, tmp_buf, strlen(tmp_buf));
+    if(err_s != SERVER_ERR_OK) {
+        log_error("server_write failed (ret: %d)", err_s);
+    }
+}
+
+// Generic function for broadcasting PiHub messages to all clients (buf has to be a NULL terminated string no longer than APP_TEMP_MSG_BUF_SIZE!)
+void app_broadcast(const char* buf, AppMsgType_t type) {
+    char tmp_buf[APP_TEMP_MSG_BUF_SIZE] = "";
+
+    // Start the message with PiHub msg type
+    if(type == APP_MSG_TYPE_ERROR) {
+        strcat(tmp_buf, APP_PIHUB_ERROR_MSG);
+    } else {
+        strcat(tmp_buf, APP_PIHUB_INFO_MSG);
+    }
+
+    // Concatenate the actual message and add a new line character
+    strcat(tmp_buf, buf);
+    strcat(tmp_buf, "\n");
+
+    ServerError_t err_s = server_broadcast(&app_ctx.server, tmp_buf, strlen(tmp_buf));
+    if(err_s != SERVER_ERR_OK) {
+        log_error("server_write failed (ret: %d)", err_s);
+    }
+}
 
 /************* Event handlers for Dispatcher *************/
 
@@ -70,33 +115,141 @@ void handle_gpio_set(char* argv, uint32_t argc, const void* cmd_ctx) {
     }
 
     // @TODO: Add logic for setting GPIO
-
-    ServerError_t err_s = server_write(&app_ctx.server, *client, "Testing\n", strlen("Testing\n"));
-    if(err_s != SERVER_ERR_OK) {
-        log_error("server_write failed (ret: %d)", err_s);
-    }
 }
 
-void handle_gpio_toggle(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("handle_gpio_toggle called");
-
-    for(uint32_t arg = 0; (arg < argc) && (arg < DISPATCHER_MAX_ARGS); arg++) {
-        if(strnlen(argv + (arg * DISPATCHER_ARG_MAX_SIZE), DISPATCHER_ARG_MAX_SIZE) < DISPATCHER_ARG_MAX_SIZE) {
-            log_info("  arg %d: %s", arg, argv + (arg * DISPATCHER_ARG_MAX_SIZE));
-        }
-    }
+void handle_gpio_get(char* argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("handle_gpio_get called");
 }
 
 void handle_sensor_list(char* argv, uint32_t argc, const void* cmd_ctx) {
     log_info("handle_sensor_list called");
-
-    for(uint32_t arg = 0; (arg < argc) && (arg < DISPATCHER_MAX_ARGS); arg++) {
-        if(strnlen(argv + (arg * DISPATCHER_ARG_MAX_SIZE), DISPATCHER_ARG_MAX_SIZE) < DISPATCHER_ARG_MAX_SIZE) {
-            log_info("  arg %d: %s", arg, argv + (arg * DISPATCHER_ARG_MAX_SIZE));
-        }
-    }
 }
 
+void handle_sensor_get(char* argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("handle_sensor_get called");
+}
+
+void handle_server_status(char* argv, uint32_t argc, const void* cmd_ctx) {
+    log_debug("handle_server_status called");
+
+    if(!cmd_ctx) {
+        log_error("NULL context provided to the handle_server_status");
+        return;
+    }
+
+    // The cmd context carries details about the client that invoked the command
+    ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    SysstatMemInfo_t mem_stats;
+    SysstatNetInfo_t net_stats;
+    SysstatUptimeInfo_t time_stats;
+
+    SysstatError_t err_stat = sysstat_get_mem_info(&mem_stats);
+    if(err_stat != SYSSTAT_ERR_OK) {
+        log_error("sysstat_get_mem_info failed (ret: %d)", err_stat);
+    }
+
+    err_stat = sysstat_get_net_info(NET_INTERFACE_NAME, &net_stats);
+    if(err_stat != SYSSTAT_ERR_OK) {
+        log_error("sysstat_get_net_info failed (ret: %d)", err_stat);
+    }
+
+    err_stat = sysstat_get_uptime_info(&time_stats);
+    if(err_stat != SYSSTAT_ERR_OK) {
+        log_error("sysstat_get_uptime_info failed (ret: %d)", err_stat);
+    }
+
+    // Check the number of connected clients
+    uint32_t clients_count = 0;
+    for(ListNode_t* node = server_get_clients(&app_ctx.server); node != NULL; node = node->next) {
+        clients_count++;
+    }
+
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    sprintf(buf, "Mem %lu kB/%lu kB (available/total) | Net tx: %lu kB, rx: %lu kB | Uptime %u.%hu s",
+    mem_stats.available_kB, mem_stats.total_kB, net_stats.tx_bytes / 1000, net_stats.rx_bytes / 1000,
+    time_stats.up.s, time_stats.up.ms);
+    app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
+
+    sprintf(buf, "connected clients: %u", clients_count);
+    app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
+}
+
+void handle_server_uptime(char* argv, uint32_t argc, const void* cmd_ctx) {
+    log_debug("handle_server_uptime called");
+
+    if(!cmd_ctx) {
+        log_error("NULL context provided to the handle_server_uptime");
+        return;
+    }
+
+    // The cmd context carries details about the client that invoked the command
+    ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    SysstatUptimeInfo_t time_stats;
+
+    SysstatError_t err_stat = sysstat_get_uptime_info(&time_stats);
+    if(err_stat != SYSSTAT_ERR_OK) {
+        log_error("sysstat_get_uptime_info failed (ret: %d)", err_stat);
+    }
+
+    // Check the number of connected clients
+    uint32_t clients_count = 0;
+    for(ListNode_t* node = server_get_clients(&app_ctx.server); node != NULL; node = node->next) {
+        clients_count++;
+    }
+
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    sprintf(buf, "uptime %u.%hu s", time_stats.up.s, time_stats.up.ms);
+    app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
+}
+
+void handle_server_net(char* argv, uint32_t argc, const void* cmd_ctx) {
+    log_debug("handle_server_net called");
+
+    if(!cmd_ctx) {
+        log_error("NULL context provided to the handle_server_net");
+        return;
+    }
+
+    // The cmd context carries details about the client that invoked the command
+    ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    SysstatNetInfo_t net_stats;
+
+    SysstatError_t err_stat = sysstat_get_net_info(NET_INTERFACE_NAME, &net_stats);
+    if(err_stat != SYSSTAT_ERR_OK) {
+        log_error("sysstat_get_net_info failed (ret: %d)", err_stat);
+    }
+
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    sprintf(buf, "net tx: %lu kB (%lu packets), rx: %lu kB (%lu packets)", net_stats.tx_bytes / 1000,
+    net_stats.rx_packets, net_stats.rx_bytes / 1000, net_stats.tx_packets);
+    app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
+}
+
+void handle_server_shutdown(char* argv, uint32_t argc, const void* cmd_ctx) {
+    log_debug("handle_server_shutdown called");
+}
+
+void handle_server_disconnect(char* argv, uint32_t argc, const void* cmd_ctx) {
+    log_debug("handle_client_disconnect called");
+
+    if(!cmd_ctx) {
+        log_error("NULL context provided to the handle_server_net");
+        return;
+    }
+
+    // The cmd context carries details about the client that invoked the command
+    ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    app_send_to_client(client, "disconnecting from the server...", APP_MSG_TYPE_INFO);
+
+    ServerError_t err_s = server_disconnect(&app_ctx.server, *client);
+    if(err_s != SERVER_ERR_OK) {
+        log_error("server_disconnect failed (ret: %d)", err_s);
+    }
+}
 
 /************* Event handlers for Server *************/
 
@@ -113,20 +266,14 @@ void handle_client_connect(void* ctx, const ServerClient_t client) {
         log_error("server_get_client_ip failed (ret: %d)", err_s);
     }
 
-    // Notify other clients about the new user
-    char msg_disconnect[APP_CONNECT_MSG_BUF_SIZE] = APP_PIHUB_INFO_MSG;
-    strncat(msg_disconnect, ip_str, APP_CONNECT_MSG_BUF_SIZE - 1);
-    strncat(msg_disconnect, APP_CONNECT_MSG, APP_CONNECT_MSG_BUF_SIZE - 1);
-    err_s = server_broadcast(_ctx, msg_disconnect, strnlen(msg_disconnect, APP_CONNECT_MSG_BUF_SIZE));
-    if(err_s != SERVER_ERR_OK) {
-        log_error("server_broadcast failed (ret: %d)", err_s);
-    }
-
     // Send a welcome message to the user
-    err_s = server_write(_ctx, client, APP_WELCOME_MSG, strlen(APP_WELCOME_MSG));
-    if(err_s != SERVER_ERR_OK) {
-        log_error("server_write failed (ret: %d)", err_s);
-    }
+    app_send_to_client(&client, APP_WELCOME_MSG, APP_MSG_TYPE_INFO);
+
+    // Notify other clients about the new user
+    char msg_connect[APP_CONNECT_MSG_BUF_SIZE] = "";
+    strncat(msg_connect, ip_str, APP_CONNECT_MSG_BUF_SIZE - 1);
+    strncat(msg_connect, APP_CONNECT_MSG, APP_CONNECT_MSG_BUF_SIZE - 1);
+    app_broadcast(msg_connect, APP_MSG_TYPE_INFO);
 }
 
 /* Read received data and pass it to the dispatcher for parsing and executing associated command */
@@ -152,29 +299,20 @@ void handle_data_received(void* ctx, const ServerClient_t client) {
         break;
     }
     case DISPATCHER_ERR_CMD_INCOMPLETE: {
-        err_s = server_write(_ctx, client, APP_CMD_INCOMPLETE_MSG, strlen(APP_CMD_INCOMPLETE_MSG));
-        if(err_s != SERVER_ERR_OK) {
-            log_error("server_write failed (ret: %d)", err_s);
-        }
+        app_send_to_client(&client, APP_CMD_INCOMPLETE_MSG, APP_MSG_TYPE_ERROR);
         break;
     }
     case DISPATCHER_ERR_BUF_TOO_LONG:   // fallthrough
     case DISPATCHER_ERR_BUF_EMPTY:      // fallthrough
     case DISPATCHER_ERR_TOKEN_TOO_LONG: // fallthrough
     case DISPATCHER_ERR_CMD_NOT_FOUND: {
-        err_s = server_write(_ctx, client, APP_CMD_ERR_MSG, strlen(APP_CMD_ERR_MSG));
-        if(err_s != SERVER_ERR_OK) {
-            log_error("server_write failed (ret: %d)", err_s);
-        }
+        app_send_to_client(&client, APP_CMD_ERR_MSG, APP_MSG_TYPE_ERROR);
         break;
     }
     case DISPATCHER_ERR_NULL_ARG:        // fallthrough
     case DISPATCHER_ERR_PTHREAD_FAILURE: // fallthrough
     default: {
-        err_s = server_write(_ctx, client, APP_GENERIC_FAILURE_MSG, strlen(APP_GENERIC_FAILURE_MSG));
-        if(err_s != SERVER_ERR_OK) {
-            log_error("server_write failed (ret: %d)", err_s);
-        }
+        app_send_to_client(&client, APP_GENERIC_FAILURE_MSG, APP_MSG_TYPE_ERROR);
         break;
     }
     }
@@ -257,10 +395,18 @@ AppError_t app_init_dispatcher(void) {
     // Configure dispatcher parameters and supported commands
     const DispatcherConfig_t cfg = { .delim = APP_DISPATCHER_DELIM };
 
-    const DispatcherCommandDef_t cmd_list[] = { // List of all commands to be supported
+    const DispatcherCommandDef_t cmd_list[] = {
+        // List of all commands to be supported
         { .target = "gpio", .action = "set", .callback_ptr = handle_gpio_set },
-        { .target = "gpio", .action = "toggle", .callback_ptr = handle_gpio_toggle },
-        { .target = "sensor", .action = "list", .callback_ptr = handle_sensor_list }
+        { .target = "gpio", .action = "get", .callback_ptr = handle_gpio_get },
+        { .target = "sensor", .action = "list", .callback_ptr = handle_sensor_list },
+        { .target = "sensor", .action = "get", .callback_ptr = handle_sensor_get },
+        { .target = "server", .action = "status", .callback_ptr = handle_server_status },
+        { .target = "server", .action = "uptime", .callback_ptr = handle_server_uptime },
+        { .target = "server", .action = "net", .callback_ptr = handle_server_net },
+        { .target = "server", .action = "shutdown", .callback_ptr = handle_server_shutdown },
+        { .target = "server", .action = "disconnect", .callback_ptr = handle_server_disconnect },
+
     };
 
     // Initialize the dispatcher
