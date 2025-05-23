@@ -123,8 +123,8 @@ i2c_bus_write(I2CBus_t* ctx, const uint8_t slave_addr, const uint8_t reg_addr, c
         err = I2C_BUS_ERR_I2CDEV_FAILURE;
     } else {
         // Perform an atomic write of register address and actual data
-        uint8_t buf[data_len + 1];       // @TODO: no dynamically allocated mem (improve); VLA gcc feature
-        buf[0] = reg_addr;               // Specify register address (first byte sent over I2C)
+        uint8_t buf[data_len + 1]; // @TODO: replace VLA (gcc feature only; dynamic mem alloc!) with a normal array
+        buf[0] = reg_addr;         // Specify register address (first byte sent over I2C)
         memcpy(&buf[1], data, data_len); // Copy the data to be sent (consecutive bytes)
 
         if(write(ctx->fd, buf, data_len + 1) != data_len + 1) {
