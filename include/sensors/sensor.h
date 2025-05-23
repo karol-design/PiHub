@@ -9,6 +9,11 @@
 
 #include "hw/hw_interface.h"
 
+typedef struct {
+    uint8_t addr;              // Address of the sensor (7 lower bits for I2C / CS GPIO pin for SPI)
+    HwInterfaceType_t if_type; // Hardware interface type (e.g. HW_INTERFACE_I2C or HW_INTERFACE_SPI)
+} SensorInfo_t;
+
 /**
  * @struct SensorError_t
  * @brief Error codes returned by sensor API functions
