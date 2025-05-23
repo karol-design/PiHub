@@ -106,32 +106,32 @@ void handle_server_failure(void* ctx, const ServerError_t err) {
 /************* Event handlers for Dispatcher *************/
 #ifdef TEST_DISPATCHER
 
-void handle_gpio_set(char* argv, uint32_t argc) {
+void handle_gpio_set_test(char** argv, uint32_t argc, const void* cmd_ctx) {
     log_info("handle_gpio_set called");
 
     for(uint32_t arg = 0; (arg < argc) && (arg < DISPATCHER_MAX_ARGS); arg++) {
-        if(strnlen(argv + (arg * DISPATCHER_ARG_MAX_SIZE), DISPATCHER_ARG_MAX_SIZE) < DISPATCHER_ARG_MAX_SIZE) {
-            log_info("  arg %d: %s", arg, argv + (arg * DISPATCHER_ARG_MAX_SIZE));
+        if(strnlen(*(argv + arg), DISPATCHER_ARG_MAX_SIZE) < DISPATCHER_ARG_MAX_SIZE) {
+            log_info("  arg %d: %s", arg, *(argv + arg));
         }
     }
 }
 
-void handle_gpio_toggle(char* argv, uint32_t argc) {
+void handle_gpio_toggle_test(char** argv, uint32_t argc, const void* cmd_ctx) {
     log_info("handle_gpio_toggle called");
 
     for(uint32_t arg = 0; (arg < argc) && (arg < DISPATCHER_MAX_ARGS); arg++) {
-        if(strnlen(argv + (arg * DISPATCHER_ARG_MAX_SIZE), DISPATCHER_ARG_MAX_SIZE) < DISPATCHER_ARG_MAX_SIZE) {
-            log_info("  arg %d: %s", arg, argv + (arg * DISPATCHER_ARG_MAX_SIZE));
+        if(strnlen(*(argv + arg), DISPATCHER_ARG_MAX_SIZE) < DISPATCHER_ARG_MAX_SIZE) {
+            log_info("  arg %d: %s", arg, *(argv + arg));
         }
     }
 }
 
-void handle_sensor_list(char* argv, uint32_t argc) {
+void handle_sensor_list_test(char** argv, uint32_t argc, const void* cmd_ctx) {
     log_info("handle_sensor_list called");
 
     for(uint32_t arg = 0; (arg < argc) && (arg < DISPATCHER_MAX_ARGS); arg++) {
-        if(strnlen(argv + (arg * DISPATCHER_ARG_MAX_SIZE), DISPATCHER_ARG_MAX_SIZE) < DISPATCHER_ARG_MAX_SIZE) {
-            log_info("  arg %d: %s", arg, argv + (arg * DISPATCHER_ARG_MAX_SIZE));
+        if(strnlen(*(argv + arg), DISPATCHER_ARG_MAX_SIZE) < DISPATCHER_ARG_MAX_SIZE) {
+            log_info("  arg %d: %s", arg, *(argv + arg));
         }
     }
 }
@@ -155,9 +155,9 @@ void test_dispatcher() {
 #ifdef TEST_DISPATCHER
     Dispatcher_t dispatcher;
     DispatcherConfig_t cfg = { .delim = " " };
-    DispatcherCommandDef_t gpio_set_cmd = { .target = "gpio", .action = "set", .callback_ptr = handle_gpio_set };
-    DispatcherCommandDef_t gpio_toggle_cmd = { .target = "gpio", .action = "toggle", .callback_ptr = handle_gpio_toggle };
-    DispatcherCommandDef_t sensor_list_cmd = { .target = "sensor", .action = "list", .callback_ptr = handle_sensor_list };
+    DispatcherCommandDef_t gpio_set_cmd = { .target = "gpio", .action = "set", .callback_ptr = handle_gpio_set_test };
+    DispatcherCommandDef_t gpio_toggle_cmd = { .target = "gpio", .action = "toggle", .callback_ptr = handle_gpio_toggle_test };
+    DispatcherCommandDef_t sensor_list_cmd = { .target = "sensor", .action = "list", .callback_ptr = handle_sensor_list_test };
 
     DispatcherError_t err = dispatcher_init(&dispatcher, cfg);
     log_info("dispatcher_init called (ret %d)", err);
@@ -166,23 +166,23 @@ void test_dispatcher() {
     log_info("dispatcher_register called (ret %d)", err);
 
     // Test too many args
-    err = dispatcher_execute(&dispatcher, "gpio set 1 2 3 4 5 6 7 8 9 10 11");
+    err = dispatcher_execute(&dispatcher, "gpio set 1 2 3 4 5 6 7 8 9 10 11", NULL);
     log_info("dispatcher_execute called (ret %d)", err);
 
     // Test empty buffer
-    err = dispatcher_execute(&dispatcher, " ");
+    err = dispatcher_execute(&dispatcher, " ", NULL);
     log_info("dispatcher_execute called (ret %d)", err);
 
     // Test NULL ptr
-    err = dispatcher_execute(&dispatcher, NULL);
+    err = dispatcher_execute(&dispatcher, NULL, NULL);
     log_info("dispatcher_execute called (ret %d)", err);
 
     // Test case-sensitivity
-    err = dispatcher_execute(&dispatcher, "GPiO SeT 0 OK");
+    err = dispatcher_execute(&dispatcher, "GPiO SeT 0 OK", NULL);
     log_info("dispatcher_execute called (ret %d)", err);
 
     // Test unknown command
-    err = dispatcher_execute(&dispatcher, "GPiO SeTs 0");
+    err = dispatcher_execute(&dispatcher, "GPiO SeTs 0", NULL);
     log_info("dispatcher_execute called (ret %d)", err);
 
     /* ------------------ */
@@ -191,7 +191,7 @@ void test_dispatcher() {
     log_info("dispatcher_register called (ret %d)", err);
 
     // Test case-sensitivity
-    err = dispatcher_execute(&dispatcher, "GPiO toGGle PIN1 OK");
+    err = dispatcher_execute(&dispatcher, "GPiO toGGle PIN1 OK", NULL);
     log_info("dispatcher_execute called (ret %d)", err);
 
     /* ------------------ */
@@ -200,11 +200,11 @@ void test_dispatcher() {
     log_info("dispatcher_register called (ret %d)", err);
 
     // Test case-sensitivity
-    err = dispatcher_execute(&dispatcher, "Sensor LIST S1 OK");
+    err = dispatcher_execute(&dispatcher, "Sensor LIST S1 OK", NULL);
     log_info("dispatcher_execute called (ret %d)", err);
 
     // Test case-sensitivity
-    err = dispatcher_execute(&dispatcher, "GPiO toGGle PIN1 OK");
+    err = dispatcher_execute(&dispatcher, "GPiO toGGle PIN1 OK", NULL);
     log_info("dispatcher_execute called (ret %d)", err);
 
     /* ------------------ */
@@ -213,7 +213,7 @@ void test_dispatcher() {
     log_info("dispatcher_deregister called (ret %d)", err);
 
     // Test case-sensitivity
-    err = dispatcher_execute(&dispatcher, "GPiO toGGle PIN1");
+    err = dispatcher_execute(&dispatcher, "GPiO toGGle PIN1", NULL);
     log_info("dispatcher_execute called (ret %d)", err);
 
     err = dispatcher_deinit(&dispatcher);
