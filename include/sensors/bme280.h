@@ -1,6 +1,7 @@
 /**
  * @file bme280.h
  * @brief A simple driver for Bosh BME280 digital humidity, pressure and temperature sensor with I2C and SPI support
+ * @TODO: Add mutex for sensors (two users using the same sensor at the same time)
  *
  */
 

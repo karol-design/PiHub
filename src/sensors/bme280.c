@@ -322,6 +322,9 @@ STATIC SensorError_t bme280_data_readout(Bme280_t* ctx, Bme280_output_t* out) {
     return SENSOR_ERR_OK;
 }
 
+// The following code has been taken from BME280 datasheet
+// @TODO: Refactor the code and make it more readable
+
 STATIC Bme280_temp_t BME280_compensate_T_int32(Trim_t trim, Bme280_s32_t adc_T) {
     Bme280_temp_t out;
     Bme280_s32_t var1, var2;
