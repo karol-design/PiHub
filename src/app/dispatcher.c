@@ -206,7 +206,11 @@ DispatcherError_t dispatcher_execute(Dispatcher_t* ctx, const char* buf, const v
                     err = DISPATCHER_ERR_NULL_ARG;
                     break;
                 }
-                ctx->cmd_list[cmd_no].cfg.callback_ptr((char*)tokens.argv, tokens.argc, cmd_ctx);
+                char* argv_ptrs[DISPATCHER_MAX_ARGS];
+                for(uint32_t i = 0; i < tokens.argc; ++i) {
+                    argv_ptrs[i] = tokens.argv[i];
+                }
+                ctx->cmd_list[cmd_no].cfg.callback_ptr(argv_ptrs, tokens.argc, cmd_ctx);
                 break; // Finish the search on the first cmd that matched
             }
         }

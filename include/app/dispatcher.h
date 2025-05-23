@@ -53,7 +53,7 @@ typedef struct {
 typedef struct {
     char target[DISPATCHER_TARGET_MAX_SIZE]; // Target token, e.g. "gpio", "sensor", "server"
     char action[DISPATCHER_ACTION_MAX_SIZE]; // Action token, e.g. "set", "get", "status"
-    void (*callback_ptr)(char* argv, uint32_t argc, const void* cmd_ctx); // Pointer to the command handler
+    void (*callback_ptr)(char** argv, uint32_t argc, const void* cmd_ctx); // Pointer to the command handler
 } DispatcherCommandDef_t;
 
 typedef struct {

@@ -22,7 +22,7 @@ extern DispatcherError_t dispatcher_deinit(Dispatcher_t* ctx);
 /**
  * @brief A generic callback function used for testing purposes.
  */
-void generic_callback(char* argv, uint32_t argc, const void* cmd_ctx) {
+void generic_callback(char** argv, uint32_t argc, const void* cmd_ctx) {
 }
 
 static Dispatcher_t test_dispatcher;
