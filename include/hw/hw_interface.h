@@ -58,7 +58,7 @@ typedef struct {
  * Open the I2C/SPI adapter and set it up for communication.
  *
  * @param[in, out] ctx Pointer to the HwInterface_t instance.
- * @param[in] type Configuration structure.
+ * @param[in] type Hardware interface type (HW_INTERFACE_I2C or HW_INTERFACE_SPI)
  * @return HW_INTERFACE_ERR_OK on success, HW_INTERFACE_ERR_NULL_ARGUMENT or HW_INTERFACE_ERR_INIT_FAILURE otherwise.
  */
 HwInterfaceError_t hw_interface_init(HwInterface_t* ctx, const HwInterfaceType_t type);
