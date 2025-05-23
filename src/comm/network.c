@@ -219,7 +219,7 @@ ServerError_t server_broadcast(Server_t* ctx, const uint8_t* data, const size_t 
         if(err != SERVER_ERR_OK) {
             return err;
         }
-        client = client->next; // @TODO: There should be a dedicated ll function for this protected with mutexes (risk of accessing deleted deleted node)
+        client = client->next; // @TODO: There should be a dedicated ll function for this protected with mutexes (risk of accessing deleted node)
     }
 
     return SERVER_ERR_OK;
