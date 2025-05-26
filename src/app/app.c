@@ -18,7 +18,7 @@
 #define APP_SERVER_MAX_CLIENTS 5          // Maximum number of clients connected at the same time
 #define APP_SERVER_MAX_CONN_REQUESTS 10   // Maximum number of pending connection reuqests
 #define APP_SERVER_RECV_DATA_BUF_SIZE 128 // Size of the buffer for new data from the clients
-#define NET_INTERFACE_NAME "eth0"         // Name of the network interface
+#define NET_INTERFACE_NAME "wlan0"        // Name of the network interface
 
 #define BME280_COUNT 1 // Number of connected BME280 sensors
 
