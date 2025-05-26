@@ -9,87 +9,17 @@
 #include "app/sysstat.h"
 #include "sensors/sensors_config.h"
 #include "utils/common.h"
+#include "utils/config.h"
 #include "utils/log.h"
 
 // @TODO: Add note on sensors (Sensor_t abstraction) - static vs discovery mode
-
-// Configuration macros
-#define APP_SERVER_PORT "65002" // Port number (as a string) under which the PiHub server should be accessible
-#define APP_SERVER_MAX_CLIENTS 5          // Maximum number of clients connected at the same time
-#define APP_SERVER_MAX_CONN_REQUESTS 10   // Maximum number of pending connection reuqests
-#define APP_SERVER_RECV_DATA_BUF_SIZE 128 // Size of the buffer for new data from the clients
-#define NET_INTERFACE_NAME "wlan0"        // Name of the network interface
-
-#define BME280_COUNT 1 // Number of connected BME280 sensors
 
 #define APP_GPIO_SET_ARG_COUNT 2   // Number of arguments in gpio set command
 #define APP_GPIO_GET_ARG_COUNT 1   // Number of arguments in gpio get command
 #define APP_SENSOR_GET_ARG_COUNT 2 // Number of arguments in sensor get command
 
-#define APP_DISPATCHER_DELIM " " // Delimiter in commands handled by the dispatcher
-
-#define APP_PIHUB_INFO_MSG "[PiHub] info: "
-#define APP_PIHUB_ERROR_MSG "[PiHub] error: "
-#define APP_PIHUB_PROMPT_CHAR "> "
-
-#define APP_TEMP_MSG_BUF_SIZE 1024   // Size of the generic temp buffer for building message strings
-#define APP_GENERIC_MSG_MAX_LEN 1024 // Maximum length of macro-defined string messages
-#define APP_DISCONNECT_MSG "one of the clients disconnected" // Msg broadcasted on disconnect
-#define APP_CONNECT_MSG_BUF_SIZE 128                         // New connection buffer size
-#define APP_CONNECT_MSG " connected to the server"           // Msg broadcasted on new connection
-#define APP_WELCOME_MSG "Welcome to PiHub!"                  // Msg sent to all new clients on connection
-
-#define APP_GENERIC_FAILURE_MSG "generic system failure"
-#define APP_CMD_INCOMPLETE_MSG "command incomplete"
-#define APP_CMD_ERR_MSG "command not found (incorrect cmd / buffer empty or overflow / token too long)"
-
-#define APP_HUM_STRING "hum"     // String argument for reading the humidity
-#define APP_PRESS_STRING "press" // String argument for reading the pressure
-#define APP_TEMP_STRING "temp"   // String argument for reading the temperature
-
-
-// Array with the help/man message (divided into lines)
-const char* APP_HELP_MSG[] = {
-    "PIHUB(1)                      User Commands                     PIHUB(1)",
-    "",
-    "NAME",
-    "    pihub - Smart Home Control Hub command interface",
-    "",
-    "SYNOPSIS",
-    "    <target> <action> [parameters]",
-    "",
-    "DESCRIPTION",
-    "    A structured, Unix-style TCP command interface to control GPIOs,",
-    "    read sensors, and query Raspberry Pi system status.",
-    "",
-    "COMMANDS",
-    "  GPIO Commands:",
-    "    gpio set <PIN> <state>        Set GPIO pin state [0/1]",
-    "    gpio get <PIN>                Get GPIO pin state",
-    "",
-    "  Sensor Commands:",
-    "    sensor list                   List available sensors",
-    "    sensor get <ID> temp          Get temperature in [*C]",
-    "    sensor get <ID> hum           Get relative humidity [%]",
-    "    sensor get <ID> press         Get pressure [Pa]",
-    "",
-    "  Server Commands:",
-    "    server help                   Display this man page",
-    "    server status                 Show system health info",
-    "    server uptime                 Show server's uptime",
-    "    server net                    Show network stats",
-    "    server disconnect             Disconnect this client",
-    "",
-    "EXAMPLES",
-    "    gpio set 10 on               Turn on relay at GPIO 10",
-    "    sensor get S1 temp           Get temperature from sensor S1",
-    "    server uptime                Check how long the Pi has been running",
-};
-
-
 // Function prototypes (declarations)
 STATIC void app_remove_nl(char* buf);
-
 
 /**
  * @struct App_t
@@ -303,7 +233,7 @@ void handle_sensor_list(char** argv, uint32_t argc, const void* cmd_ctx) {
     for(int i = 0; i < BME280_COUNT; ++i) {
         snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor id: #%d; addr: 0x%02hhX; hw if: %s", i,
         SENSORS_CONFIG_BME280[i].addr, (SENSORS_CONFIG_BME280[i].if_type == HW_INTERFACE_I2C ? "I2C" : "SPI"));
-        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+        app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
     }
 }
 
