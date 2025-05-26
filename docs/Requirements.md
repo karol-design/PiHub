@@ -65,8 +65,8 @@ A user runs a Python client on a PC, laptop, or tablet to:
 
 | Command                   | Description                           | Example           | Priority   |
 | ------------------------- | ------------------------------------- | ----------------- | ---------- |
-| `gpio set <PIN> <on\off>` | Set GPIO state.                       | `gpio set 10 on`  | P0         |
-| `gpio get <PIN>`          | Get GPIO state (or all if omitted).   | `gpio get 5`      | P0         |
+| `gpio set <PIN> <state>`  | Set GPIO state (1/0).                 | `gpio set 10 1`   | P0         |
+| `gpio get <PIN>`          | Get GPIO state.                       | `gpio get 5`      | P0         |
 ---
 
 ### **2️⃣ Sensor Queries**
@@ -74,9 +74,9 @@ A user runs a Python client on a PC, laptop, or tablet to:
 | Command                       | Description                               | Example              | Priority   |
 | ----------------------------- | ----------------------------------------- | -------------------- | ---------- |
 | `sensor list`                 | List available sensors and their IDs.     | `sensor list`        | P0         |
-| `sensor get <SENSOR_ID> temp` | Get temperature.                          | `sensor get S1 temp` | P0         |
-| `sensor get <SENSOR_ID> hum`  | Get humidity.                             | `sensor get S1 hum`  | P0         |
-| `sensor get <SENSOR_ID> press`| Get Pressure.                             | `sensor get S1 press`| P0         |
+| `sensor get <SENSOR_ID> temp` | Get temperature.                          | `sensor get 1 temp`  | P0         |
+| `sensor get <SENSOR_ID> hum`  | Get humidity.                             | `sensor get 2 hum`   | P0         |
+| `sensor get <SENSOR_ID> press`| Get Pressure.                             | `sensor get 0 press` | P0         |
 ---
 
 ### **3️⃣ Server Monitoring and Management**
@@ -88,7 +88,7 @@ A user runs a Python client on a PC, laptop, or tablet to:
 | `server net`        | Get network statistics. | `server net`        | P0         |
 | `server temp`       | Get CPU temperature.    | `server temp`       | P1         |
 | `server disconnect` | Disconnect client.      | `server disconnect` | P0         |
-| `server shutdown`   | Shut down the server.   | `server shutdown`   | P0         |
+| `server shutdown`   | Shut down the server.   | `server shutdown`   | P1         |
 ---
 
 ### **5️⃣ Configuration & Security**
