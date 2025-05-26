@@ -1,7 +1,7 @@
 ## ToDo:
 - Implement SPI support and complete hw_interface component [6h]
 - (opt) Develop a client script in python (automatic graphing temp + another user) [8h]
-- Clean up app.c a little bit [4h]
+- Do a final review of all 10 components [8h]
 - Design the electronics for the project [16h]
 - Prepare a demo and a presentation
 
