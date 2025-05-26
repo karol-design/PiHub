@@ -2,6 +2,8 @@
 #include <string.h>
 #include <time.h>
 
+#define LOGS_ENABLED 1
+
 #ifdef LOGS_ENABLED
 
 #ifdef _WIN32
