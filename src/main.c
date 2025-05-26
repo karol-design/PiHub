@@ -21,6 +21,9 @@ int main() {
     // err = app_stop();
     // err = app_deinit();
 
-    // Exit the main thread once the app is set up and running
+
+    while(1) {
+        // Enter an infinite empty loop once the app controller and the server is started
+    }
     return 0;
 }
