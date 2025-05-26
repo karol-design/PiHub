@@ -604,11 +604,7 @@ void handle_client_disconnect(void* ctx, const ServerClient_t client) {
 
     log_debug("handle_client_disconnect called");
 
-    ServerError_t err_s =
-    server_broadcast(_ctx, APP_DISCONNECT_MSG, strnlen(APP_DISCONNECT_MSG, sizeof(APP_DISCONNECT_MSG)));
-    if(err_s != SERVER_ERR_OK) {
-        log_error("server_broadcast failed (ret: %d)", err_s);
-    }
+    app_broadcast(APP_DISCONNECT_MSG, APP_MSG_TYPE_INFO);
 }
 
 /* Reinit and restart the whole application controller */
