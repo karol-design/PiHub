@@ -80,9 +80,6 @@ const char* APP_HELP_MSG[] = {
     "    server disconnect             Disconnect this client",
     "    server shutdown               Shutdown the server",
     "",
-    "NOTES",
-    "    - Commands are case-insensitive.",
-    "",
     "EXAMPLES",
     "    gpio set 10 on               Turn on relay at GPIO 10",
     "    sensor get S1 temp           Get temperature from sensor S1",
@@ -306,45 +303,50 @@ void handle_sensor_get(char** argv, uint32_t argc, const void* cmd_ctx) {
     }
     id = (uint8_t)sensor_id_ul; // sensor_id_ul is between 0 and UINT8_MAX so it's safe to cast
 
+    AppMsgType_t resp_type = APP_MSG_TYPE_INFO;
     char buf[APP_TEMP_MSG_BUF_SIZE] = "";
     if(strncasecmp(*(argv + 1), APP_HUM_STRING, DISPATCHER_ARG_MAX_SIZE) == 0) {
         float hum;
         SensorError_t err_s = bme280_get_hum(&app_ctx.sens_bme280[id], &hum);
         if(err_s == SENSOR_ERR_OK) {
+            log_debug("sensor #%hu returned humidity: %.2f %%", id, hum);
             snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor #%hu returned humidity: %.2f %%", id, hum);
-            log_error("sensor #%hu returned humidity: %.2f %%", id, hum);
         } else {
+            log_error("bme280_get_hum failed (sensor id: %hu, ret: %d)", id, err_s);
             snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
             "failed to read humidity from sensor #%hu (bme280_get_hum ret: %d)", id, err_s);
-            log_error("bme280_get_hum failed (sensor id: %hu, ret: %d)", id, err_s);
+            resp_type = APP_MSG_TYPE_ERROR;
         }
     } else if(strncasecmp(*(argv + 1), APP_TEMP_STRING, DISPATCHER_ARG_MAX_SIZE) == 0) {
         float temp;
         SensorError_t err_s = bme280_get_temp(&app_ctx.sens_bme280[id], &temp);
         if(err_s == SENSOR_ERR_OK) {
+            log_debug("sensor #%hu returned temp: %.2f *C", id, temp);
             snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor #%hu returned temp: %.2f *C", id, temp);
-            log_error("sensor #%hu returned temp: %.2f *C", id, temp);
         } else {
+            log_error("bme280_get_temp failed (sensor id: %hu, ret: %d)", id, err_s);
             snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
             "failed to read temp from sensor #%hu (bme280_get_temp ret: %d)", id, err_s);
-            log_error("bme280_get_temp failed (sensor id: %hu, ret: %d)", id, err_s);
+            resp_type = APP_MSG_TYPE_ERROR;
         }
     } else if(strncasecmp(*(argv + 1), APP_PRESS_STRING, DISPATCHER_ARG_MAX_SIZE) == 0) {
         float press;
         SensorError_t err_s = bme280_get_press(&app_ctx.sens_bme280[id], &press);
         if(err_s == SENSOR_ERR_OK) {
             snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor #%hu returned press: %.2f Pa", id, press);
-            log_error("sensor #%hu returned press: %.2f Pa", id, press);
+            log_debug("sensor #%hu returned press: %.2f Pa", id, press);
         } else {
+            log_error("bme280_get_press failed (sensor id: %hu, ret: %d)", id, err_s);
             snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
             "failed to read press from sensor #%hu (bme280_get_press ret: %d)", id, err_s);
-            log_error("bme280_get_press failed (sensor id: %hu, ret: %d)", id, err_s);
+            resp_type = APP_MSG_TYPE_ERROR;
         }
     } else {
-        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "unsupported measurement type");
         log_error("unsupported measurement type ('%.20s')", *(argv + 1));
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "unsupported measurement type");
+        resp_type = APP_MSG_TYPE_ERROR;
     }
-    app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+    app_send_to_client(client, buf, resp_type);
 }
 
 void handle_server_status(char** argv, uint32_t argc, const void* cmd_ctx) {

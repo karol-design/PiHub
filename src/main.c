@@ -450,7 +450,7 @@ void test_app() {
     err = app_run();
     log_info("app_run called and returned %d", err);
 
-    sleep(100);
+    sleep(240);
 
     err = app_stop();
     log_info("app_stop called and returned %d", err);
