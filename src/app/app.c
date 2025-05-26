@@ -64,21 +64,21 @@ const char* APP_HELP_MSG[] = {
     "",
     "COMMANDS",
     "  GPIO Commands:",
-    "    gpio set <on|off> <PIN>       Set GPIO pin state",
-    "    gpio get [PIN]                Get GPIO pin state (or all)",
+    "    gpio set <PIN> <state>        Set GPIO pin state [0/1]",
+    "    gpio get <PIN>                Get GPIO pin state",
     "",
     "  Sensor Commands:",
     "    sensor list                   List available sensors",
-    "    sensor get <ID> temp          Get temperature",
-    "    sensor get <ID> hum           Get humidity",
-    "    sensor get <ID> press         Get pressure",
+    "    sensor get <ID> temp          Get temperature in [*C]",
+    "    sensor get <ID> hum           Get relative humidity [%%]",
+    "    sensor get <ID> press         Get pressure [Pa]",
     "",
     "  Server Commands:",
+    "    server help                   Display this man page"
     "    server status                 Show system health info",
-    "    server uptime                 Show uptime",
+    "    server uptime                 Show server's uptime",
     "    server net                    Show network stats",
     "    server disconnect             Disconnect this client",
-    "    server shutdown               Shutdown the server",
     "",
     "EXAMPLES",
     "    gpio set 10 on               Turn on relay at GPIO 10",
@@ -157,10 +157,21 @@ void app_broadcast(const char* buf, AppMsgType_t type) {
 /************* Event handlers for Dispatcher *************/
 
 void handle_gpio_set(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("cmd received: gpio set");
+    if(!cmd_ctx) {
+        log_error("NULL context provided to handle_gpio_set");
+        return;
+    }
 
     // The cmd context carries details about the client that invoked the command
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    char ip_str[IPV4_ADDRSTR_LENGTH];
+    if(server_get_client_ip(*client, ip_str) == SERVER_ERR_OK) {
+        log_info("'gpio set' cmd received (client IP: %.16s)", ip_str);
+    } else {
+        log_info("'gpio set' cmd received (client IP: failed to retrieve)");
+    }
+
     uint8_t line, state;
     char* conversion_end_ptr;
 
@@ -214,10 +225,21 @@ void handle_gpio_set(char** argv, uint32_t argc, const void* cmd_ctx) {
 }
 
 void handle_gpio_get(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("cmd received: gpio get");
+    if(!cmd_ctx) {
+        log_error("NULL context provided to handle_gpio_get");
+        return;
+    }
 
     // The cmd context carries details about the client that invoked the command
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    char ip_str[IPV4_ADDRSTR_LENGTH];
+    if(server_get_client_ip(*client, ip_str) == SERVER_ERR_OK) {
+        log_info("'gpio get' cmd received (client IP: %.16s)", ip_str);
+    } else {
+        log_info("'gpio get' cmd received (client IP: failed to retrieve)");
+    }
+
     uint8_t line, state;
     char* conversion_end_ptr;
 
@@ -250,16 +272,26 @@ void handle_gpio_get(char** argv, uint32_t argc, const void* cmd_ctx) {
         app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
     } else {
         snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "GPIO line %hu is %s", line, (state ? "HIGH" : "LOW"));
-        log_info("GPIO line %hu is %s", line, (state ? "HIGH" : "LOW"));
+        log_debug("GPIO line %hu is %s", line, (state ? "HIGH" : "LOW"));
         app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
     }
 }
 
 void handle_sensor_list(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("cmd received: sensor list");
+    if(!cmd_ctx) {
+        log_error("NULL context provided to handle_sensor_list");
+        return;
+    }
 
     // The cmd context carries details about the client that invoked the command
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    char ip_str[IPV4_ADDRSTR_LENGTH];
+    if(server_get_client_ip(*client, ip_str) == SERVER_ERR_OK) {
+        log_info("'sensor list' cmd received (client IP: %.16s)", ip_str);
+    } else {
+        log_info("'sensor list' cmd received (client IP: failed to retrieve)");
+    }
 
     char buf[APP_TEMP_MSG_BUF_SIZE] = "";
 
@@ -276,10 +308,22 @@ void handle_sensor_list(char** argv, uint32_t argc, const void* cmd_ctx) {
 }
 
 void handle_sensor_get(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("cmd received: sensor get");
+    if(!cmd_ctx) {
+        log_error("NULL context provided to handle_sensor_get");
+        return;
+    }
 
     // The cmd context carries details about the client that invoked the command
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    char ip_str[IPV4_ADDRSTR_LENGTH];
+    if(server_get_client_ip(*client, ip_str) == SERVER_ERR_OK) {
+        log_info("'sensor get' cmd received (client IP: %.16s)", ip_str);
+    } else {
+        log_info("'sensor get' cmd received (client IP: failed to retrieve)");
+    }
+
+
     uint8_t id;
     char* conversion_end_ptr;
 
@@ -350,15 +394,20 @@ void handle_sensor_get(char** argv, uint32_t argc, const void* cmd_ctx) {
 }
 
 void handle_server_status(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("cmd received: server status");
-
     if(!cmd_ctx) {
-        log_error("NULL context provided to the handle_server_status");
+        log_error("NULL context provided to handle_server_status");
         return;
     }
 
     // The cmd context carries details about the client that invoked the command
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    char ip_str[IPV4_ADDRSTR_LENGTH];
+    if(server_get_client_ip(*client, ip_str) == SERVER_ERR_OK) {
+        log_info("'server status' cmd received (client IP: %.16s)", ip_str);
+    } else {
+        log_info("'server status' cmd received (client IP: failed to retrieve)");
+    }
 
     SysstatMemInfo_t mem_stats;
     SysstatNetInfo_t net_stats;
@@ -405,8 +454,6 @@ void handle_server_status(char** argv, uint32_t argc, const void* cmd_ctx) {
 }
 
 void handle_server_uptime(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("cmd received: server uptime");
-
     if(!cmd_ctx) {
         log_error("NULL context provided to the handle_server_uptime");
         return;
@@ -414,6 +461,13 @@ void handle_server_uptime(char** argv, uint32_t argc, const void* cmd_ctx) {
 
     // The cmd context carries details about the client that invoked the command
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    char ip_str[IPV4_ADDRSTR_LENGTH];
+    if(server_get_client_ip(*client, ip_str) == SERVER_ERR_OK) {
+        log_info("'server uptime' cmd received (client IP: %.16s)", ip_str);
+    } else {
+        log_info("'server uptime' cmd received (client IP: failed to retrieve)");
+    }
 
     SysstatUptimeInfo_t time_stats;
     char buf[APP_TEMP_MSG_BUF_SIZE] = "";
@@ -430,8 +484,6 @@ void handle_server_uptime(char** argv, uint32_t argc, const void* cmd_ctx) {
 }
 
 void handle_server_net(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("cmd received: server net");
-
     if(!cmd_ctx) {
         log_error("NULL context provided to the handle_server_net");
         return;
@@ -439,6 +491,13 @@ void handle_server_net(char** argv, uint32_t argc, const void* cmd_ctx) {
 
     // The cmd context carries details about the client that invoked the command
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    char ip_str[IPV4_ADDRSTR_LENGTH];
+    if(server_get_client_ip(*client, ip_str) == SERVER_ERR_OK) {
+        log_info("'server net' cmd received (client IP: %.16s)", ip_str);
+    } else {
+        log_info("'server net' cmd received (client IP: failed to retrieve)");
+    }
 
     SysstatNetInfo_t net_stats;
     char buf[APP_TEMP_MSG_BUF_SIZE] = "";
@@ -455,13 +514,7 @@ void handle_server_net(char** argv, uint32_t argc, const void* cmd_ctx) {
     }
 }
 
-void handle_server_shutdown(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("cmd received: server shutdown");
-}
-
 void handle_server_disconnect(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_debug("cmd received: server disconnect");
-
     if(!cmd_ctx) {
         log_error("NULL context provided to the handle_server_disconnect");
         return;
@@ -469,6 +522,13 @@ void handle_server_disconnect(char** argv, uint32_t argc, const void* cmd_ctx) {
 
     // The cmd context carries details about the client that invoked the command
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    char ip_str[IPV4_ADDRSTR_LENGTH];
+    if(server_get_client_ip(*client, ip_str) == SERVER_ERR_OK) {
+        log_info("'server disconnect' cmd received (client IP: %.16s)", ip_str);
+    } else {
+        log_info("'server disconnect' cmd received (client IP: failed to retrieve)");
+    }
 
     app_send_to_client(client, "disconnecting from the server...", APP_MSG_TYPE_INFO);
 
@@ -482,14 +542,19 @@ void handle_server_disconnect(char** argv, uint32_t argc, const void* cmd_ctx) {
 }
 
 void handle_server_help(char** argv, uint32_t argc, const void* cmd_ctx) {
-    log_debug("cmd received: server help");
-
     if(!cmd_ctx) {
         log_error("NULL context provided to handle_server_help");
         return;
     }
 
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    char ip_str[IPV4_ADDRSTR_LENGTH];
+    if(server_get_client_ip(*client, ip_str) == SERVER_ERR_OK) {
+        log_info("'server help' cmd received (client IP: %.16s)", ip_str);
+    } else {
+        log_info("'server help' cmd received (client IP: failed to retrieve)");
+    }
 
     const size_t line_count = sizeof(APP_HELP_MSG) / sizeof(APP_HELP_MSG[0]);
 
@@ -651,7 +716,6 @@ AppError_t app_init_dispatcher(void) {
         { .target = "server", .action = "status", .callback_ptr = handle_server_status },
         { .target = "server", .action = "uptime", .callback_ptr = handle_server_uptime },
         { .target = "server", .action = "net", .callback_ptr = handle_server_net },
-        { .target = "server", .action = "shutdown", .callback_ptr = handle_server_shutdown },
         { .target = "server", .action = "disconnect", .callback_ptr = handle_server_disconnect },
         { .target = "server", .action = "help", .callback_ptr = handle_server_help }
     };
