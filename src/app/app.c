@@ -716,7 +716,7 @@ AppError_t app_init() {
         } else if(SENSORS_CONFIG_BME280[i].if_type == HW_INTERFACE_SPI) {
             hw_if = app_ctx.spi;
         }
-        SensorError_t err_s = bme280_init(&app_ctx.sens_bme280[i], SENSORS_CONFIG_BME280[i].addr, app_ctx.spi);
+        SensorError_t err_s = bme280_init(&app_ctx.sens_bme280[i], SENSORS_CONFIG_BME280[i].addr, hw_if);
         if(err_s != SENSOR_ERR_OK) {
             log_error("bme280_init failed (err: %d)", err_hw);
             return APP_ERR_SENSOR_FAILURE;
