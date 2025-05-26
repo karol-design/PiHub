@@ -586,7 +586,7 @@ void handle_server_failure(void* ctx, const ServerError_t err) {
         log_error("app_stop failed (ret: %d)", ret_a);
     }
 
-    // Give the app some margin before reinit is done
+    // Give the app some time margin before reinit is done
     sleep(10);
 
     // ...reinit...
