@@ -70,11 +70,11 @@ const char* APP_HELP_MSG[] = {
     "  Sensor Commands:",
     "    sensor list                   List available sensors",
     "    sensor get <ID> temp          Get temperature in [*C]",
-    "    sensor get <ID> hum           Get relative humidity [%%]",
+    "    sensor get <ID> hum           Get relative humidity [%]",
     "    sensor get <ID> press         Get pressure [Pa]",
     "",
     "  Server Commands:",
-    "    server help                   Display this man page"
+    "    server help                   Display this man page",
     "    server status                 Show system health info",
     "    server uptime                 Show server's uptime",
     "    server net                    Show network stats",
@@ -301,7 +301,7 @@ void handle_sensor_list(char** argv, uint32_t argc, const void* cmd_ctx) {
 
     // List all bme280 sensors defined in the sensors_config.h configuration file
     for(int i = 0; i < BME280_COUNT; ++i) {
-        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor id: #%d; addr: 0x%hhu; hw if: %s", i,
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor id: #%d; addr: 0x%02hhX; hw if: %s", i,
         SENSORS_CONFIG_BME280[i].addr, (SENSORS_CONFIG_BME280[i].if_type == HW_INTERFACE_I2C ? "I2C" : "SPI"));
         app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
     }
