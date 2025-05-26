@@ -116,7 +116,7 @@ SysstatError_t sysstat_get_net_info(const char* interface_name, SysstatNetInfo_t
     }
 
     // Move to the line with the interface-of-interest statistics
-    char* if_stats = strcasestr(buf, interface_name);
+    char* if_stats = strstr(buf, interface_name);
     if(!if_stats) {
         return SYSSTAT_ERR_GENERIC;
     }
