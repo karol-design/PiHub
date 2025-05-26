@@ -1,8 +1,11 @@
 ## ToDo:
-- Implement core app logic (setup; command handling; shutdown) [16h]
-- Implement SPI support and complete hw_interface component [6h]    
-- (opt) Learn python fundamentals and develop a client script [24h]
-- Design the electronics for the project (can be breadboards) [8h]
+- Implement SPI support and complete hw_interface component [6h]
+- (opt) Develop a client script in python (automatic graphing temp + another user) [8h]
+- Clean up app.c a little bit [4h]
+- Design the electronics for the project [16h]
+- Prepare a demo and a presentation
+
+- Test remote debugging [1]
 
 ## Usefull commands
 > ./build.sh --run
