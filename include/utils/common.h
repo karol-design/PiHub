@@ -1,3 +1,6 @@
+#ifndef __COMMON_H__
+#define __COMMON_H__
+
 // #define UT
 
 // Weak attribute for mocked functions enabled only for Unit Tests
@@ -13,3 +16,5 @@
 #else
 #define STATIC static
 #endif
+
+#endif // __COMMON_H__
