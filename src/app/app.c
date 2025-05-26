@@ -1,12 +1,17 @@
 #include "app/app.h"
 
-#include <string.h> // for: memset
+#include <errno.h>  // For: errno and related macros
+#include <limits.h> // For: ULONG_MAX etc.
+#include <stdlib.h> // For: strtoul()
+#include <string.h> // For: memset()
 #include <unistd.h> // For: sleep()
 
 #include "app/sysstat.h"
+#include "sensors/sensors_config.h"
 #include "utils/common.h"
 #include "utils/log.h"
 
+// @TODO: Add note on sensors (Sensor_t abstraction) - static vs discovery mode
 
 // Configuration macros
 #define APP_SERVER_PORT "65002" // Port number (as a string) under which the PiHub server should be accessible
@@ -15,21 +20,74 @@
 #define APP_SERVER_RECV_DATA_BUF_SIZE 128 // Size of the buffer for new data from the clients
 #define NET_INTERFACE_NAME "eth0"         // Name of the network interface
 
+#define BME280_COUNT 1 // Number of connected BME280 sensors
+
+#define APP_GPIO_SET_ARG_COUNT 2   // Number of arguments in gpio set command
+#define APP_GPIO_GET_ARG_COUNT 1   // Number of arguments in gpio get command
+#define APP_SENSOR_GET_ARG_COUNT 2 // Number of arguments in sensor get command
+
 #define APP_DISPATCHER_DELIM " " // Delimiter in commands handled by the dispatcher
 
 #define APP_PIHUB_INFO_MSG "[PiHub] info: "
 #define APP_PIHUB_ERROR_MSG "[PiHub] error: "
 #define APP_PIHUB_PROMPT_CHAR "> "
 
-#define APP_TEMP_MSG_BUF_SIZE 1024 // Size of the generic temp buffer for building message strings
+#define APP_TEMP_MSG_BUF_SIZE 1024   // Size of the generic temp buffer for building message strings
+#define APP_GENERIC_MSG_MAX_LEN 1024 // Maximum length of macro-defined string messages
 #define APP_DISCONNECT_MSG "one of the clients disconnected" // Msg broadcasted on disconnect
-#define APP_CONNECT_MSG_BUF_SIZE 64                          // New connection buffer size
+#define APP_CONNECT_MSG_BUF_SIZE 128                         // New connection buffer size
 #define APP_CONNECT_MSG " connected to the server"           // Msg broadcasted on new connection
 #define APP_WELCOME_MSG "Welcome to PiHub!"                  // Msg sent to all new clients on connection
 
 #define APP_GENERIC_FAILURE_MSG "generic system failure"
 #define APP_CMD_INCOMPLETE_MSG "command incomplete"
 #define APP_CMD_ERR_MSG "command not found (incorrect cmd / buffer empty or overflow / token too long)"
+
+#define APP_HUM_STRING "hum"     // String argument for reading the humidity
+#define APP_PRESS_STRING "press" // String argument for reading the pressure
+#define APP_TEMP_STRING "temp"   // String argument for reading the temperature
+
+
+// Array with the help/man message (divided into lines)
+const char* APP_HELP_MSG[] = {
+    "PIHUB(1)                      User Commands                     PIHUB(1)",
+    "",
+    "NAME",
+    "    pihub - Smart Home Control Hub command interface",
+    "",
+    "SYNOPSIS",
+    "    <target> <action> [parameters]",
+    "",
+    "DESCRIPTION",
+    "    A structured, Unix-style TCP command interface to control GPIOs,",
+    "    read sensors, and query Raspberry Pi system status.",
+    "",
+    "COMMANDS",
+    "  GPIO Commands:",
+    "    gpio set <on|off> <PIN>       Set GPIO pin state",
+    "    gpio get [PIN]                Get GPIO pin state (or all)",
+    "",
+    "  Sensor Commands:",
+    "    sensor list                   List available sensors",
+    "    sensor get <ID> temp          Get temperature",
+    "    sensor get <ID> hum           Get humidity",
+    "    sensor get <ID> press         Get pressure",
+    "",
+    "  Server Commands:",
+    "    server status                 Show system health info",
+    "    server uptime                 Show uptime",
+    "    server net                    Show network stats",
+    "    server disconnect             Disconnect this client",
+    "    server shutdown               Shutdown the server",
+    "",
+    "NOTES",
+    "    - Commands are case-insensitive.",
+    "",
+    "EXAMPLES",
+    "    gpio set 10 on               Turn on relay at GPIO 10",
+    "    sensor get S1 temp           Get temperature from sensor S1",
+    "    server uptime                Check how long the Pi has been running",
+};
 
 
 // Function prototypes (declarations)
@@ -46,9 +104,8 @@ typedef struct {
     Dispatcher_t dispatcher;
     HwInterface_t i2c;
     HwInterface_t spi;
-    Bme280_t sens_1;
+    Bme280_t sens_bme280[BME280_COUNT];
     Gpio_t gpio;
-
     // Internal controller state
     bool running;
 } App_t;
@@ -64,16 +121,16 @@ void app_send_to_client(const ServerClient_t* client, const char* buf, AppMsgTyp
 
     // Start the message with PiHub msg type
     if(type == APP_MSG_TYPE_ERROR) {
-        strcat(tmp_buf, APP_PIHUB_ERROR_MSG);
+        strncat(tmp_buf, APP_PIHUB_ERROR_MSG, APP_TEMP_MSG_BUF_SIZE - 1);
     } else {
-        strcat(tmp_buf, APP_PIHUB_INFO_MSG);
+        strncat(tmp_buf, APP_PIHUB_INFO_MSG, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
     }
 
     // Concatenate the actual message and add a new line character
-    strcat(tmp_buf, buf);
-    strcat(tmp_buf, "\n");
+    strncat(tmp_buf, buf, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
+    strncat(tmp_buf, "\n", APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
 
-    ServerError_t err_s = server_write(&app_ctx.server, *client, tmp_buf, strlen(tmp_buf));
+    ServerError_t err_s = server_write(&app_ctx.server, *client, tmp_buf, strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE));
     if(err_s != SERVER_ERR_OK) {
         log_error("server_write failed (ret: %d)", err_s);
     }
@@ -85,16 +142,16 @@ void app_broadcast(const char* buf, AppMsgType_t type) {
 
     // Start the message with PiHub msg type
     if(type == APP_MSG_TYPE_ERROR) {
-        strcat(tmp_buf, APP_PIHUB_ERROR_MSG);
+        strncat(tmp_buf, APP_PIHUB_ERROR_MSG, APP_TEMP_MSG_BUF_SIZE - 1);
     } else {
-        strcat(tmp_buf, APP_PIHUB_INFO_MSG);
+        strncat(tmp_buf, APP_PIHUB_INFO_MSG, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
     }
 
     // Concatenate the actual message and add a new line character
-    strcat(tmp_buf, buf);
-    strcat(tmp_buf, "\n");
+    strncat(tmp_buf, buf, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
+    strncat(tmp_buf, "\n", APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
 
-    ServerError_t err_s = server_broadcast(&app_ctx.server, tmp_buf, strlen(tmp_buf));
+    ServerError_t err_s = server_broadcast(&app_ctx.server, tmp_buf, strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE));
     if(err_s != SERVER_ERR_OK) {
         log_error("server_write failed (ret: %d)", err_s);
     }
@@ -102,35 +159,196 @@ void app_broadcast(const char* buf, AppMsgType_t type) {
 
 /************* Event handlers for Dispatcher *************/
 
-void handle_gpio_set(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("handle_gpio_set called");
+void handle_gpio_set(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("cmd received: gpio set");
+
+    // The cmd context carries details about the client that invoked the command
+    ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+    uint8_t line, state;
+    char* conversion_end_ptr;
+
+    if(argc != APP_GPIO_SET_ARG_COUNT) {
+        log_error("incorrect number of args in the 'gpio set' cmd");
+        app_send_to_client(client, "incorrect number of arguments [use server help for manual]", APP_MSG_TYPE_ERROR);
+        return;
+    }
+
+    // Try converting the first parameter into the line number
+    errno = 0;
+
+    unsigned long line_ul = strtoul(*argv, &conversion_end_ptr, 10);
+    if(errno == EINVAL || errno == ERANGE || conversion_end_ptr == *argv) {
+        log_error("failed to convert line num str into a number (errno: %s)", strerror(errno));
+        app_send_to_client(client, "failed to convert line number", APP_MSG_TYPE_ERROR);
+        return;
+    } else if(line_ul >= UINT8_MAX) {
+        log_error("line number outside the supported range (val: %lu)", line_ul);
+        app_send_to_client(client, "line number outside the supported range", APP_MSG_TYPE_ERROR);
+        return;
+    }
+    line = (uint8_t)line_ul; // line_ul is between 0 and UINT8_MAX so it's safe to cast
+
+    // Try converting the second parameter into the state
+    errno = 0;
+    unsigned long state_ul = strtoul(*(argv + 1), &conversion_end_ptr, 10);
+    if(errno == EINVAL || errno == ERANGE || conversion_end_ptr == *(argv + 1)) {
+        log_error("failed to convert state num str into a number (errno: %s)", strerror(errno));
+        app_send_to_client(client, "failed to convert state number", APP_MSG_TYPE_ERROR);
+        return;
+    } else if(state_ul != 0 && state_ul != 1) {
+        log_error("incorrect state value (val: %lu)", state_ul);
+        app_send_to_client(client, "incorrect state value (only 0 or 1 is allowed)", APP_MSG_TYPE_ERROR);
+        return;
+    }
+    state = (uint8_t)state_ul; // state_ul is between 0 and UINT8_MAX so it's safe to cast
+
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    GpioError_t err_g = gpio_set(&app_ctx.gpio, line, state);
+    if(err_g != SYSSTAT_ERR_OK) {
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
+        "failed to set the GPIO output (line: %hu, state: %hu, gpio_set ret: %d)", line, state, err_g);
+        log_error("gpio_set failed (line: %hu, state: %hu, ret: %d)", line, state, err_g);
+        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+    } else {
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "GPIO line %hu set to %s", line, (state ? "HIGH" : "LOW"));
+        log_info("GPIO line %hu set to %s", line, (state ? "HIGH" : "LOW"));
+        app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
+    }
+}
+
+void handle_gpio_get(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("cmd received: gpio get");
+
+    // The cmd context carries details about the client that invoked the command
+    ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+    uint8_t line, state;
+    char* conversion_end_ptr;
+
+    if(argc != APP_GPIO_GET_ARG_COUNT) {
+        log_error("incorrect number of arguments in the 'gpio get' cmd");
+        app_send_to_client(client, "incorrect number of arguments [use server help for manual]", APP_MSG_TYPE_ERROR);
+        return;
+    }
+
+    // Try converting the first parameter into the line number
+    errno = 0;
+    unsigned long line_ul = strtoul(*argv, &conversion_end_ptr, 10);
+    if(errno == EINVAL || errno == ERANGE || conversion_end_ptr == *argv) {
+        log_error("failed to convert line num str into a number (errno: %s)", strerror(errno));
+        app_send_to_client(client, "failed to convert line number", APP_MSG_TYPE_ERROR);
+        return;
+    } else if(line_ul >= UINT8_MAX) {
+        log_error("line number outside the supported range (val: %lu)", line_ul);
+        app_send_to_client(client, "line number outside the supported range", APP_MSG_TYPE_ERROR);
+        return;
+    }
+    line = (uint8_t)line_ul; // line_ul is between 0 and UINT8_MAX so it's safe to cast
+
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    GpioError_t err_g = gpio_get(&app_ctx.gpio, line, &state);
+    if(err_g != SYSSTAT_ERR_OK) {
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
+        "failed to get the GPIO output (line: %hu, state: %hu, gpio_get ret: %d)", line, state, err_g);
+        log_error("gpio_get failed (line: %hu, state: %hu, ret: %d)", line, state, err_g);
+        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+    } else {
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "GPIO line %hu is %s", line, (state ? "HIGH" : "LOW"));
+        log_info("GPIO line %hu is %s", line, (state ? "HIGH" : "LOW"));
+        app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
+    }
+}
+
+void handle_sensor_list(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("cmd received: sensor list");
 
     // The cmd context carries details about the client that invoked the command
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
 
-    for(uint32_t arg = 0; (arg < argc) && (arg < DISPATCHER_MAX_ARGS); arg++) {
-        if(strnlen(argv + (arg * DISPATCHER_ARG_MAX_SIZE), DISPATCHER_ARG_MAX_SIZE) < DISPATCHER_ARG_MAX_SIZE) {
-            log_info("  arg %d: %s", arg, argv + (arg * DISPATCHER_ARG_MAX_SIZE));
-        }
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+
+    if(BME280_COUNT <= 0) {
+        app_send_to_client(client, "No sensors configured", APP_MSG_TYPE_ERROR);
     }
 
-    // @TODO: Add logic for setting GPIO
+    // List all bme280 sensors defined in the sensors_config.h configuration file
+    for(int i = 0; i < BME280_COUNT; ++i) {
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor id: #%d; addr: 0x%hhu; hw if: %s", i,
+        SENSORS_CONFIG_BME280[i].addr, (SENSORS_CONFIG_BME280[i].if_type == HW_INTERFACE_I2C ? "I2C" : "SPI"));
+        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+    }
 }
 
-void handle_gpio_get(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("handle_gpio_get called");
+void handle_sensor_get(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("cmd received: sensor get");
+
+    // The cmd context carries details about the client that invoked the command
+    ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+    uint8_t id;
+    char* conversion_end_ptr;
+
+    if(argc != APP_SENSOR_GET_ARG_COUNT) {
+        log_error("incorrect number of arguments in the 'sensor get' cmd");
+        app_send_to_client(client, "incorrect number of arguments [use server help for manual]", APP_MSG_TYPE_ERROR);
+        return;
+    }
+
+    // Try converting the first parameter into the sensor ID
+    errno = 0;
+    unsigned long sensor_id_ul = strtoul(*argv, &conversion_end_ptr, 10);
+    if(errno == EINVAL || errno == ERANGE || conversion_end_ptr == *argv) {
+        log_error("failed to convert sensor ID str into a number (errno: %s)", strerror(errno));
+        app_send_to_client(client, "failed to convert the sensor ID", APP_MSG_TYPE_ERROR);
+        return;
+    } else if(sensor_id_ul >= UINT8_MAX || sensor_id_ul > BME280_COUNT) {
+        log_error("sensor ID invalid (val: %lu)", sensor_id_ul);
+        app_send_to_client(client, "invalid sensor ID", APP_MSG_TYPE_ERROR);
+        return;
+    }
+    id = (uint8_t)sensor_id_ul; // sensor_id_ul is between 0 and UINT8_MAX so it's safe to cast
+
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    if(strncasecmp(*(argv + 1), APP_HUM_STRING, DISPATCHER_ARG_MAX_SIZE) == 0) {
+        float hum;
+        SensorError_t err_s = bme280_get_hum(&app_ctx.sens_bme280[id], &hum);
+        if(err_s == SENSOR_ERR_OK) {
+            snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor #%hu returned humidity: %.2f %%", id, hum);
+            log_error("sensor #%hu returned humidity: %.2f %%", id, hum);
+        } else {
+            snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
+            "failed to read humidity from sensor #%hu (bme280_get_hum ret: %d)", id, err_s);
+            log_error("bme280_get_hum failed (sensor id: %hu, ret: %d)", id, err_s);
+        }
+    } else if(strncasecmp(*(argv + 1), APP_TEMP_STRING, DISPATCHER_ARG_MAX_SIZE) == 0) {
+        float temp;
+        SensorError_t err_s = bme280_get_temp(&app_ctx.sens_bme280[id], &temp);
+        if(err_s == SENSOR_ERR_OK) {
+            snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor #%hu returned temp: %.2f *C", id, temp);
+            log_error("sensor #%hu returned temp: %.2f *C", id, temp);
+        } else {
+            snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
+            "failed to read temp from sensor #%hu (bme280_get_temp ret: %d)", id, err_s);
+            log_error("bme280_get_temp failed (sensor id: %hu, ret: %d)", id, err_s);
+        }
+    } else if(strncasecmp(*(argv + 1), APP_PRESS_STRING, DISPATCHER_ARG_MAX_SIZE) == 0) {
+        float press;
+        SensorError_t err_s = bme280_get_press(&app_ctx.sens_bme280[id], &press);
+        if(err_s == SENSOR_ERR_OK) {
+            snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor #%hu returned press: %.2f Pa", id, press);
+            log_error("sensor #%hu returned press: %.2f Pa", id, press);
+        } else {
+            snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
+            "failed to read press from sensor #%hu (bme280_get_press ret: %d)", id, err_s);
+            log_error("bme280_get_press failed (sensor id: %hu, ret: %d)", id, err_s);
+        }
+    } else {
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "unsupported measurement type");
+        log_error("unsupported measurement type ('%.20s')", *(argv + 1));
+    }
+    app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
 }
 
-void handle_sensor_list(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("handle_sensor_list called");
-}
-
-void handle_sensor_get(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_info("handle_sensor_get called");
-}
-
-void handle_server_status(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_debug("handle_server_status called");
+void handle_server_status(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("cmd received: server status");
 
     if(!cmd_ctx) {
         log_error("NULL context provided to the handle_server_status");
@@ -143,20 +361,30 @@ void handle_server_status(char* argv, uint32_t argc, const void* cmd_ctx) {
     SysstatMemInfo_t mem_stats;
     SysstatNetInfo_t net_stats;
     SysstatUptimeInfo_t time_stats;
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
 
     SysstatError_t err_stat = sysstat_get_mem_info(&mem_stats);
     if(err_stat != SYSSTAT_ERR_OK) {
         log_error("sysstat_get_mem_info failed (ret: %d)", err_stat);
+        sprintf(buf, "failed to retrieve memory stats (sysstat_get_mem_info ret: %d)", err_stat);
+        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+        return;
     }
 
     err_stat = sysstat_get_net_info(NET_INTERFACE_NAME, &net_stats);
     if(err_stat != SYSSTAT_ERR_OK) {
         log_error("sysstat_get_net_info failed (ret: %d)", err_stat);
+        sprintf(buf, "failed to retrieve network stats (sysstat_get_net_info ret: %d)", err_stat);
+        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+        return;
     }
 
     err_stat = sysstat_get_uptime_info(&time_stats);
     if(err_stat != SYSSTAT_ERR_OK) {
         log_error("sysstat_get_uptime_info failed (ret: %d)", err_stat);
+        sprintf(buf, "failed to retrieve uptime stats (sysstat_get_uptime_info ret: %d)", err_stat);
+        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+        return;
     }
 
     // Check the number of connected clients
@@ -165,18 +393,17 @@ void handle_server_status(char* argv, uint32_t argc, const void* cmd_ctx) {
         clients_count++;
     }
 
-    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
-    sprintf(buf, "Mem %lu kB/%lu kB (available/total) | Net tx: %lu kB, rx: %lu kB | Uptime %u.%hu s",
-    mem_stats.available_kB, mem_stats.total_kB, net_stats.tx_bytes / 1000, net_stats.rx_bytes / 1000,
-    time_stats.up.s, time_stats.up.ms);
+    snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
+    "Mem %lu kB/%lu kB (available/total) | Net tx: %lu kB, rx: %lu kB | Uptime %u.%hu s", mem_stats.available_kB,
+    mem_stats.total_kB, net_stats.tx_bytes / 1000, net_stats.rx_bytes / 1000, time_stats.up.s, time_stats.up.ms);
     app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
 
-    sprintf(buf, "connected clients: %u", clients_count);
+    snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "connected clients: %u", clients_count);
     app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
 }
 
-void handle_server_uptime(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_debug("handle_server_uptime called");
+void handle_server_uptime(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("cmd received: server uptime");
 
     if(!cmd_ctx) {
         log_error("NULL context provided to the handle_server_uptime");
@@ -187,25 +414,21 @@ void handle_server_uptime(char* argv, uint32_t argc, const void* cmd_ctx) {
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
 
     SysstatUptimeInfo_t time_stats;
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
 
     SysstatError_t err_stat = sysstat_get_uptime_info(&time_stats);
     if(err_stat != SYSSTAT_ERR_OK) {
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "failed to retrieve uptime info (sysstat_get_uptime_info ret: %d)", err_stat);
         log_error("sysstat_get_uptime_info failed (ret: %d)", err_stat);
+        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+    } else {
+        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "uptime %u.%hu s", time_stats.up.s, time_stats.up.ms);
+        app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
     }
-
-    // Check the number of connected clients
-    uint32_t clients_count = 0;
-    for(ListNode_t* node = server_get_clients(&app_ctx.server); node != NULL; node = node->next) {
-        clients_count++;
-    }
-
-    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
-    sprintf(buf, "uptime %u.%hu s", time_stats.up.s, time_stats.up.ms);
-    app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
 }
 
-void handle_server_net(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_debug("handle_server_net called");
+void handle_server_net(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("cmd received: server net");
 
     if(!cmd_ctx) {
         log_error("NULL context provided to the handle_server_net");
@@ -216,27 +439,29 @@ void handle_server_net(char* argv, uint32_t argc, const void* cmd_ctx) {
     ServerClient_t* client = (ServerClient_t*)cmd_ctx;
 
     SysstatNetInfo_t net_stats;
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
 
     SysstatError_t err_stat = sysstat_get_net_info(NET_INTERFACE_NAME, &net_stats);
     if(err_stat != SYSSTAT_ERR_OK) {
+        sprintf(buf, "failed to retrieve network stats (sysstat_get_net_info ret: %d)", err_stat);
         log_error("sysstat_get_net_info failed (ret: %d)", err_stat);
+        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+    } else {
+        sprintf(buf, "net tx: %lu kB (%lu packets), rx: %lu kB (%lu packets)", net_stats.tx_bytes / 1000,
+        net_stats.rx_packets, net_stats.rx_bytes / 1000, net_stats.tx_packets);
+        app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
     }
-
-    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
-    sprintf(buf, "net tx: %lu kB (%lu packets), rx: %lu kB (%lu packets)", net_stats.tx_bytes / 1000,
-    net_stats.rx_packets, net_stats.rx_bytes / 1000, net_stats.tx_packets);
-    app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
 }
 
-void handle_server_shutdown(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_debug("handle_server_shutdown called");
+void handle_server_shutdown(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_info("cmd received: server shutdown");
 }
 
-void handle_server_disconnect(char* argv, uint32_t argc, const void* cmd_ctx) {
-    log_debug("handle_client_disconnect called");
+void handle_server_disconnect(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_debug("cmd received: server disconnect");
 
     if(!cmd_ctx) {
-        log_error("NULL context provided to the handle_server_net");
+        log_error("NULL context provided to the handle_server_disconnect");
         return;
     }
 
@@ -247,7 +472,27 @@ void handle_server_disconnect(char* argv, uint32_t argc, const void* cmd_ctx) {
 
     ServerError_t err_s = server_disconnect(&app_ctx.server, *client);
     if(err_s != SERVER_ERR_OK) {
+        char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+        sprintf(buf, "failed to disconnect from the server (server_disconnect ret: %d)", err_s);
         log_error("server_disconnect failed (ret: %d)", err_s);
+        app_send_to_client(client, buf, APP_MSG_TYPE_ERROR);
+    }
+}
+
+void handle_server_help(char** argv, uint32_t argc, const void* cmd_ctx) {
+    log_debug("cmd received: server help");
+
+    if(!cmd_ctx) {
+        log_error("NULL context provided to handle_server_help");
+        return;
+    }
+
+    ServerClient_t* client = (ServerClient_t*)cmd_ctx;
+
+    const size_t line_count = sizeof(APP_HELP_MSG) / sizeof(APP_HELP_MSG[0]);
+
+    for(size_t i = 0; i < line_count; ++i) {
+        app_send_to_client(client, APP_HELP_MSG[i], APP_MSG_TYPE_INFO);
     }
 }
 
@@ -324,7 +569,8 @@ void handle_client_disconnect(void* ctx, const ServerClient_t client) {
 
     log_debug("handle_client_disconnect called");
 
-    ServerError_t err_s = server_broadcast(_ctx, APP_DISCONNECT_MSG, strlen(APP_DISCONNECT_MSG));
+    ServerError_t err_s =
+    server_broadcast(_ctx, APP_DISCONNECT_MSG, strnlen(APP_DISCONNECT_MSG, sizeof(APP_DISCONNECT_MSG)));
     if(err_s != SERVER_ERR_OK) {
         log_error("server_broadcast failed (ret: %d)", err_s);
     }
@@ -395,8 +641,7 @@ AppError_t app_init_dispatcher(void) {
     // Configure dispatcher parameters and supported commands
     const DispatcherConfig_t cfg = { .delim = APP_DISPATCHER_DELIM };
 
-    const DispatcherCommandDef_t cmd_list[] = {
-        // List of all commands to be supported
+    const DispatcherCommandDef_t cmd_list[] = { // List of all commands to be supported
         { .target = "gpio", .action = "set", .callback_ptr = handle_gpio_set },
         { .target = "gpio", .action = "get", .callback_ptr = handle_gpio_get },
         { .target = "sensor", .action = "list", .callback_ptr = handle_sensor_list },
@@ -406,7 +651,7 @@ AppError_t app_init_dispatcher(void) {
         { .target = "server", .action = "net", .callback_ptr = handle_server_net },
         { .target = "server", .action = "shutdown", .callback_ptr = handle_server_shutdown },
         { .target = "server", .action = "disconnect", .callback_ptr = handle_server_disconnect },
-
+        { .target = "server", .action = "help", .callback_ptr = handle_server_help }
     };
 
     // Initialize the dispatcher
@@ -438,15 +683,44 @@ AppError_t app_init() {
     memset(&app_ctx, 0, sizeof(App_t));
 
     // Initialize the server
-    AppError_t err = app_init_server();
-    if(err != APP_ERR_OK) {
-        return err;
+    AppError_t err_app = app_init_server();
+    if(err_app != APP_ERR_OK) {
+        return err_app;
     }
 
     // Initialize the dispatcher
-    err = app_init_dispatcher();
-    if(err != APP_ERR_OK) {
-        return err;
+    err_app = app_init_dispatcher();
+    if(err_app != APP_ERR_OK) {
+        return err_app;
+    }
+
+    // Initialize the GPIO driver
+    GpioError_t err_g = gpio_init(&app_ctx.gpio);
+    if(err_g != GPIO_ERR_OK) {
+        log_error("gpio_init failed (err: %d)", err_g);
+        return APP_ERR_GPIO_FAILURE;
+    }
+
+    // Initialize the i2c
+    HwInterfaceError_t err_hw = hw_interface_init(&app_ctx.i2c, HW_INTERFACE_I2C);
+    if(err_hw != HW_INTERFACE_ERR_OK) {
+        log_error("hw_interface_init failed (err: %d)", err_hw);
+        return APP_ERR_HW_INTERFACE_FAILURE;
+    }
+
+    // Initialize all bme280 sensors defined in the sensors_config.h configuration file
+    HwInterface_t hw_if;
+    for(int i = 0; i < BME280_COUNT; ++i) {
+        if(SENSORS_CONFIG_BME280[i].if_type == HW_INTERFACE_I2C) {
+            hw_if = app_ctx.i2c;
+        } else if(SENSORS_CONFIG_BME280[i].if_type == HW_INTERFACE_SPI) {
+            hw_if = app_ctx.spi;
+        }
+        SensorError_t err_s = bme280_init(&app_ctx.sens_bme280[i], SENSORS_CONFIG_BME280[i].addr, app_ctx.spi);
+        if(err_s != SENSOR_ERR_OK) {
+            log_error("bme280_init failed (err: %d)", err_hw);
+            return APP_ERR_SENSOR_FAILURE;
+        }
     }
 
     return APP_ERR_OK;
@@ -512,6 +786,31 @@ AppError_t app_deinit(void) {
     } else {
         log_error("failed to deinitialize the dispatcher (err: %d)", err_d);
         return APP_ERR_SERVER_FAILURE;
+    }
+
+    // Deinit the GPIO driver
+    GpioError_t err_g = gpio_deinit(&app_ctx.gpio);
+    if(err_g == GPIO_ERR_OK) {
+        log_debug("gpio deinitialized successfully");
+    } else {
+        log_error("failed to deinitialize the gpio driver (err: %d)", err_g);
+        return APP_ERR_GPIO_FAILURE;
+    }
+
+    // Deinit the i2c
+    HwInterfaceError_t err_hw = hw_interface_deinit(&app_ctx.i2c);
+    if(err_hw != HW_INTERFACE_ERR_OK) {
+        log_error("hw_interface_deinit failed (err: %d)", err_hw);
+        return APP_ERR_HW_INTERFACE_FAILURE;
+    }
+
+    // Deinitialize all bme280 sensors defined in the sensors_config.h configuration file
+    for(int i = 0; i < BME280_COUNT; ++i) {
+        SensorError_t err_s = bme280_deinit(&app_ctx.sens_bme280[i]);
+        if(err_s != SENSOR_ERR_OK) {
+            log_error("bme280_deinit failed (err: %d)", err_hw);
+            return APP_ERR_SENSOR_FAILURE;
+        }
     }
 
     // Zero-out context on deinit
