@@ -18,6 +18,44 @@
 #define APP_GPIO_GET_ARG_COUNT 1   // Number of arguments in gpio get command
 #define APP_SENSOR_GET_ARG_COUNT 2 // Number of arguments in sensor get command
 
+// Array with the help/man message (divided into lines)
+const char* APP_HELP_MSG[] = {
+    "PIHUB(1)                      User Commands                     PIHUB(1)",
+    "",
+    "NAME",
+    "    pihub - Smart Home Control Hub command interface",
+    "",
+    "SYNOPSIS",
+    "    <target> <action> [parameters]",
+    "",
+    "DESCRIPTION",
+    "    A structured, Unix-style TCP command interface to control GPIOs,",
+    "    read sensors, and query Raspberry Pi system status.",
+    "",
+    "COMMANDS",
+    "  GPIO Commands:",
+    "    gpio set <PIN> <state>        Set GPIO pin state [0/1]",
+    "    gpio get <PIN>                Get GPIO pin state",
+    "",
+    "  Sensor Commands:",
+    "    sensor list                   List available sensors",
+    "    sensor get <ID> temp          Get temperature in [*C]",
+    "    sensor get <ID> hum           Get relative humidity [%]",
+    "    sensor get <ID> press         Get pressure [Pa]",
+    "",
+    "  Server Commands:",
+    "    server help                   Display this man page",
+    "    server status                 Show system health info",
+    "    server uptime                 Show server's uptime",
+    "    server net                    Show network stats",
+    "    server disconnect             Disconnect this client",
+    "",
+    "EXAMPLES",
+    "    gpio set 10 on               Turn on relay at GPIO 10",
+    "    sensor get S1 temp           Get temperature from sensor S1",
+    "    server uptime                Check how long the Pi has been running",
+};
+
 // Function prototypes (declarations)
 STATIC void app_remove_nl(char* buf);
 

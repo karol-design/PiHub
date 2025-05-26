@@ -33,43 +33,4 @@
 #define APP_PRESS_STRING "press" // String argument for reading the pressure
 #define APP_TEMP_STRING "temp"   // String argument for reading the temperature
 
-
-// Array with the help/man message (divided into lines)
-const char* APP_HELP_MSG[] = {
-    "PIHUB(1)                      User Commands                     PIHUB(1)",
-    "",
-    "NAME",
-    "    pihub - Smart Home Control Hub command interface",
-    "",
-    "SYNOPSIS",
-    "    <target> <action> [parameters]",
-    "",
-    "DESCRIPTION",
-    "    A structured, Unix-style TCP command interface to control GPIOs,",
-    "    read sensors, and query Raspberry Pi system status.",
-    "",
-    "COMMANDS",
-    "  GPIO Commands:",
-    "    gpio set <PIN> <state>        Set GPIO pin state [0/1]",
-    "    gpio get <PIN>                Get GPIO pin state",
-    "",
-    "  Sensor Commands:",
-    "    sensor list                   List available sensors",
-    "    sensor get <ID> temp          Get temperature in [*C]",
-    "    sensor get <ID> hum           Get relative humidity [%]",
-    "    sensor get <ID> press         Get pressure [Pa]",
-    "",
-    "  Server Commands:",
-    "    server help                   Display this man page",
-    "    server status                 Show system health info",
-    "    server uptime                 Show server's uptime",
-    "    server net                    Show network stats",
-    "    server disconnect             Disconnect this client",
-    "",
-    "EXAMPLES",
-    "    gpio set 10 on               Turn on relay at GPIO 10",
-    "    sensor get S1 temp           Get temperature from sensor S1",
-    "    server uptime                Check how long the Pi has been running",
-};
-
 #endif // __CONFIG_H__
