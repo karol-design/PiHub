@@ -23,7 +23,7 @@ A user runs a Python client on a PC, laptop, or tablet to:
 4. [P0] The system shall provide **structured error messages** for invalid commands or connection issues;
 5. [P0] The system shall allow **querying server status** (including basic network statistics, system uptime, CPU temperature or sensor's status) using commands that follow the defined structure;
 6. [P0] The system shall support **graceful client disconnections** via a designated command;
-7. [P0] The system shall allow clients to **shut down the server** using a designated command;
+7. [P1] The system shall allow clients to **shut down the server** using a designated command;
 8. [P1] The server shall **log all incoming commands** and their execution status, including timestamps;
 9. [P1] The system shall allow **commands to be customizable** via a configuration file;
 10. [P2] The server shall **validate connected environmental sensors** at startup and notify the client of the system’s state after a successful connection;
