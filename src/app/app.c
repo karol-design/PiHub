@@ -81,7 +81,7 @@ typedef enum { APP_MSG_TYPE_INFO = 0x00, APP_MSG_TYPE_ERROR } AppMsgType_t;
 
 // Generic function for sending PiHub messages to the client (buf has to be a NULL terminated string no longer than APP_TEMP_MSG_BUF_SIZE!)
 void app_send_to_client(const ServerClient_t* client, const char* buf, AppMsgType_t type) {
-    char tmp_buf[APP_TEMP_MSG_BUF_SIZE] = "\n";
+    char tmp_buf[APP_TEMP_MSG_BUF_SIZE] = "";
 
     // Start the message with PiHub msg type
     if(type == APP_MSG_TYPE_ERROR) {
@@ -93,7 +93,7 @@ void app_send_to_client(const ServerClient_t* client, const char* buf, AppMsgTyp
     // Concatenate the actual message and add a new line character
     strncat(tmp_buf, buf, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
     strncat(tmp_buf, "\n", APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
-    strncat(tmp_buf, APP_PIHUB_PROMPT_CHAR, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
+    // strncat(tmp_buf, APP_PIHUB_PROMPT_CHAR, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
 
     ServerError_t err_s = server_write(&app_ctx.server, *client, tmp_buf, strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE));
     if(err_s != SERVER_ERR_OK) {

@@ -14,19 +14,19 @@
 
 #define APP_DISPATCHER_DELIM " " // Delimiter in commands handled by the dispatcher
 
-#define APP_PIHUB_INFO_MSG ""
-#define APP_PIHUB_ERROR_MSG "error: "
+#define APP_PIHUB_INFO_MSG "> "
+#define APP_PIHUB_ERROR_MSG "> err: "
 #define APP_PIHUB_PROMPT_CHAR "$ "
 
 #define APP_TEMP_MSG_BUF_SIZE 2048 // Size of the generic temp buffer for building message strings
-#define APP_DISCONNECT_MSG "one of the clients disconnected" // Msg broadcasted on disconnect
-#define APP_CONNECT_MSG " connected to the server"           // Msg broadcasted on new connection
+#define APP_DISCONNECT_MSG "one of the clients disconnected from the server" // Msg broadcasted on disconnect
+#define APP_CONNECT_MSG " connected to the server" // Msg broadcasted on new connection
 #define APP_WELCOME_MSG \
     "Welcome to PiHub — type `server help` for available commands." // Msg sent to all new clients on connection
 
-#define APP_GENERIC_FAILURE_MSG "generic system failure"
-#define APP_CMD_INCOMPLETE_MSG "command incomplete"
-#define APP_CMD_ERR_MSG "command not found (incorrect cmd / buffer empty or overflow / token too long)"
+#define APP_GENERIC_FAILURE_MSG "generic system failure, please try again"
+#define APP_CMD_INCOMPLETE_MSG "command incomplete (hint: type `server help` for syntax manual)"
+#define APP_CMD_ERR_MSG "command not found (hint: type `server help` for available commands)"
 
 #define APP_HUM_STRING "hum"     // String argument for reading the humidity
 #define APP_PRESS_STRING "press" // String argument for reading the pressure
