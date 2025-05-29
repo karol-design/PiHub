@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 
 # Define basic project details
 project(
-     piHub
+     pihubd
      VERSION 0.1
      DESCRIPTION "Simple smart-home server"
      LANGUAGES C)
@@ -26,3 +26,11 @@ else()
      # No action at the moment
 endif()
 unset(USE_MY_LIB CACHE)
+
+# Add configuration for the install target
+
+# Install binary to /usr/local/bin
+install(TARGETS pihubd RUNTIME DESTINATION bin)
+
+# Install systemd service to the correct location
+install(FILES pihub.service DESTINATION /etc/systemd/system)

@@ -1,0 +1,17 @@
+# To be placed in /etc/systemd/system/ (chmod 644 required)
+# Note: pihubd binary has to be copied into /usr/local/bin/pihubd
+
+[Unit]
+Description=PiHub server daemon
+After=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/pihubd
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

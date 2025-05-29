@@ -14,6 +14,7 @@ add_executable(${CMAKE_PROJECT_NAME} main.c)
 # Link the main executable with the PiHub and Gpiod Libraries
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE pihub_static)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE gpiod)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE systemd)
 
 # Enable logs by default
 target_compile_definitions(pihub_static PRIVATE LOGS_ENABLED=1)
