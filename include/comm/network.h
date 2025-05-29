@@ -1,5 +1,5 @@
 /**
- * @file server.h
+ * @file network.h
  * @brief Manage a simple TCP/UDP server.
  *
  * @note Use server_create(), server_run(), server_shutdown() and server_destroy(). Use server_read(),
@@ -15,8 +15,8 @@
  * instance = 1 + clients_count]
  */
 
-#ifndef __TCP_SERVER_H__
-#define __TCP_SERVER_H__
+#ifndef __NETWORK_H__
+#define __NETWORK_H__
 
 #include <arpa/inet.h> // For: inet_ntop
 #include <pthread.h>   // For: pthread_mutex_t
@@ -178,4 +178,4 @@ ServerError_t server_shutdown(Server_t* ctx);
  */
 ServerError_t server_deinit(Server_t* ctx);
 
-#endif // __TCP_SERVER_H__
+#endif // __NETWORK_H__
