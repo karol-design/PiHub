@@ -14,16 +14,15 @@
 
 #define APP_DISPATCHER_DELIM " " // Delimiter in commands handled by the dispatcher
 
-#define APP_PIHUB_INFO_MSG "[PiHub] info: "
-#define APP_PIHUB_ERROR_MSG "[PiHub] error: "
-#define APP_PIHUB_PROMPT_CHAR "> "
+#define APP_PIHUB_INFO_MSG ""
+#define APP_PIHUB_ERROR_MSG "error: "
+#define APP_PIHUB_PROMPT_CHAR "$ "
 
-#define APP_TEMP_MSG_BUF_SIZE 1024   // Size of the generic temp buffer for building message strings
-#define APP_GENERIC_MSG_MAX_LEN 1024 // Maximum length of macro-defined string messages
+#define APP_TEMP_MSG_BUF_SIZE 2048 // Size of the generic temp buffer for building message strings
 #define APP_DISCONNECT_MSG "one of the clients disconnected" // Msg broadcasted on disconnect
-#define APP_CONNECT_MSG_BUF_SIZE 128                         // New connection buffer size
 #define APP_CONNECT_MSG " connected to the server"           // Msg broadcasted on new connection
-#define APP_WELCOME_MSG "Welcome to PiHub!"                  // Msg sent to all new clients on connection
+#define APP_WELCOME_MSG \
+    "Welcome to PiHub — type `server help` for available commands." // Msg sent to all new clients on connection
 
 #define APP_GENERIC_FAILURE_MSG "generic system failure"
 #define APP_CMD_INCOMPLETE_MSG "command incomplete"

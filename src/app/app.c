@@ -29,7 +29,7 @@ const char* APP_HELP_MSG[] = {
     "    <target> <action> [parameters]",
     "",
     "DESCRIPTION",
-    "    A structured, Unix-style TCP command interface to control GPIOs,",
+    "    A minimalistic Unix-style TCP command interface to control GPIOs,",
     "    read sensors, and query Raspberry Pi system status.",
     "",
     "COMMANDS",
@@ -39,21 +39,20 @@ const char* APP_HELP_MSG[] = {
     "",
     "  Sensor Commands:",
     "    sensor list                   List available sensors",
-    "    sensor get <ID> temp          Get temperature in [*C]",
-    "    sensor get <ID> hum           Get relative humidity [%]",
-    "    sensor get <ID> press         Get pressure [Pa]",
+    "    sensor get <ID> temp          Get temperature in °C",
+    "    sensor get <ID> hum           Get relative humidity %",
+    "    sensor get <ID> press         Get pressure in Pa",
     "",
     "  Server Commands:",
     "    server help                   Display this man page",
-    "    server status                 Show system health info",
-    "    server uptime                 Show server's uptime",
-    "    server net                    Show network stats",
+    "    server status                 Get system health info",
+    "    server uptime                 Get server's uptime",
+    "    server net                    Get network stats",
     "    server disconnect             Disconnect this client",
     "",
     "EXAMPLES",
-    "    gpio set 10 on               Turn on relay at GPIO 10",
-    "    sensor get S1 temp           Get temperature from sensor S1",
-    "    server uptime                Check how long the Pi has been running",
+    "    gpio set 10 1               Set HIGH level on GPIO 10",
+    "    sensor get 1 temp           Get temperature from sensor #1",
 };
 
 // Function prototypes (declarations)
@@ -82,7 +81,7 @@ typedef enum { APP_MSG_TYPE_INFO = 0x00, APP_MSG_TYPE_ERROR } AppMsgType_t;
 
 // Generic function for sending PiHub messages to the client (buf has to be a NULL terminated string no longer than APP_TEMP_MSG_BUF_SIZE!)
 void app_send_to_client(const ServerClient_t* client, const char* buf, AppMsgType_t type) {
-    char tmp_buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    char tmp_buf[APP_TEMP_MSG_BUF_SIZE] = "\n";
 
     // Start the message with PiHub msg type
     if(type == APP_MSG_TYPE_ERROR) {
@@ -94,6 +93,7 @@ void app_send_to_client(const ServerClient_t* client, const char* buf, AppMsgTyp
     // Concatenate the actual message and add a new line character
     strncat(tmp_buf, buf, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
     strncat(tmp_buf, "\n", APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
+    strncat(tmp_buf, APP_PIHUB_PROMPT_CHAR, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
 
     ServerError_t err_s = server_write(&app_ctx.server, *client, tmp_buf, strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE));
     if(err_s != SERVER_ERR_OK) {
@@ -103,7 +103,7 @@ void app_send_to_client(const ServerClient_t* client, const char* buf, AppMsgTyp
 
 // Generic function for broadcasting PiHub messages to all clients (buf has to be a NULL terminated string no longer than APP_TEMP_MSG_BUF_SIZE!)
 void app_broadcast(const char* buf, AppMsgType_t type) {
-    char tmp_buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    char tmp_buf[APP_TEMP_MSG_BUF_SIZE] = "\n";
 
     // Start the message with PiHub msg type
     if(type == APP_MSG_TYPE_ERROR) {
@@ -115,6 +115,7 @@ void app_broadcast(const char* buf, AppMsgType_t type) {
     // Concatenate the actual message and add a new line character
     strncat(tmp_buf, buf, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
     strncat(tmp_buf, "\n", APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
+    strncat(tmp_buf, APP_PIHUB_PROMPT_CHAR, APP_TEMP_MSG_BUF_SIZE - strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE) - 1);
 
     ServerError_t err_s = server_broadcast(&app_ctx.server, tmp_buf, strnlen(tmp_buf, APP_TEMP_MSG_BUF_SIZE));
     if(err_s != SERVER_ERR_OK) {
@@ -262,6 +263,7 @@ void handle_sensor_list(char** argv, uint32_t argc, const void* cmd_ctx) {
     }
 
     char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    char buf_aux[APP_TEMP_MSG_BUF_SIZE] = "";
 
     if(BME280_COUNT <= 0) {
         app_send_to_client(client, "No sensors configured", APP_MSG_TYPE_ERROR);
@@ -269,10 +271,14 @@ void handle_sensor_list(char** argv, uint32_t argc, const void* cmd_ctx) {
 
     // List all bme280 sensors defined in the sensors_config.h configuration file
     for(int i = 0; i < BME280_COUNT; ++i) {
-        snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "sensor id: #%d; addr: 0x%02hhX; hw if: %s", i,
+        snprintf(buf_aux, APP_TEMP_MSG_BUF_SIZE, "sensor id: #%d; addr: 0x%02hhX; hw if: %s", i,
         SENSORS_CONFIG_BME280[i].addr, (SENSORS_CONFIG_BME280[i].if_type == HW_INTERFACE_I2C ? "I2C" : "SPI"));
-        app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
+        strncat(buf, buf_aux, APP_TEMP_MSG_BUF_SIZE - strnlen(buf, APP_TEMP_MSG_BUF_SIZE) - 1);
+        if(i != BME280_COUNT - 1) { // no NL at the end of t buffer (app_send_to_client() is responsible for adding it)
+            strncat(buf, buf_aux, APP_TEMP_MSG_BUF_SIZE - strnlen(buf, APP_TEMP_MSG_BUF_SIZE) - 1);
+        }
     }
+    app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
 }
 
 void handle_sensor_get(char** argv, uint32_t argc, const void* cmd_ctx) {
@@ -381,6 +387,7 @@ void handle_server_status(char** argv, uint32_t argc, const void* cmd_ctx) {
     SysstatNetInfo_t net_stats;
     SysstatUptimeInfo_t time_stats;
     char buf[APP_TEMP_MSG_BUF_SIZE] = "";
+    char buf_aux[APP_TEMP_MSG_BUF_SIZE] = "";
 
     SysstatError_t err_stat = sysstat_get_mem_info(&mem_stats);
     if(err_stat != SYSSTAT_ERR_OK) {
@@ -413,11 +420,11 @@ void handle_server_status(char** argv, uint32_t argc, const void* cmd_ctx) {
     }
 
     snprintf(buf, APP_TEMP_MSG_BUF_SIZE,
-    "Mem %lu kB/%lu kB (available/total) | Net tx: %lu kB, rx: %lu kB | Uptime %u.%hu s", mem_stats.available_kB,
+    "Mem %lu kB/%lu kB (available/total) | Net tx: %lu kB, rx: %lu kB | Uptime %u.%hu s\n", mem_stats.available_kB,
     mem_stats.total_kB, net_stats.tx_bytes / 1000, net_stats.rx_bytes / 1000, time_stats.up.s, time_stats.up.ms);
-    app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
 
-    snprintf(buf, APP_TEMP_MSG_BUF_SIZE, "connected clients: %u", clients_count);
+    snprintf(buf_aux, APP_TEMP_MSG_BUF_SIZE, "connected clients: %u", clients_count);
+    strncat(buf, buf_aux, APP_TEMP_MSG_BUF_SIZE - strnlen(buf, APP_TEMP_MSG_BUF_SIZE) - 1);
     app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
 }
 
@@ -526,9 +533,14 @@ void handle_server_help(char** argv, uint32_t argc, const void* cmd_ctx) {
 
     const size_t line_count = sizeof(APP_HELP_MSG) / sizeof(APP_HELP_MSG[0]);
 
+    char buf[APP_TEMP_MSG_BUF_SIZE] = "";
     for(size_t i = 0; i < line_count; ++i) {
-        app_send_to_client(client, APP_HELP_MSG[i], APP_MSG_TYPE_INFO);
+        strncat(buf, APP_HELP_MSG[i], APP_TEMP_MSG_BUF_SIZE - strnlen(buf, APP_TEMP_MSG_BUF_SIZE) - 1);
+        if(i != line_count - 1) { // no NL at the end of t buffer (app_send_to_client() is responsible for adding it)
+            strncat(buf, "\n", APP_TEMP_MSG_BUF_SIZE - strnlen(buf, APP_TEMP_MSG_BUF_SIZE) - 1);
+        }
     }
+    app_send_to_client(client, buf, APP_MSG_TYPE_INFO);
 }
 
 /************* Event handlers for Server *************/
@@ -550,9 +562,9 @@ void handle_client_connect(void* ctx, const ServerClient_t client) {
     app_send_to_client(&client, APP_WELCOME_MSG, APP_MSG_TYPE_INFO);
 
     // Notify other clients about the new user
-    char msg_connect[APP_CONNECT_MSG_BUF_SIZE] = "";
-    strncat(msg_connect, ip_str, APP_CONNECT_MSG_BUF_SIZE - 1);
-    strncat(msg_connect, APP_CONNECT_MSG, APP_CONNECT_MSG_BUF_SIZE - 1);
+    char msg_connect[APP_TEMP_MSG_BUF_SIZE] = "";
+    strncat(msg_connect, ip_str, APP_TEMP_MSG_BUF_SIZE - 1);
+    strncat(msg_connect, APP_CONNECT_MSG, APP_TEMP_MSG_BUF_SIZE - 1);
     app_broadcast(msg_connect, APP_MSG_TYPE_INFO);
 }
 
@@ -789,6 +801,8 @@ AppError_t app_stop(void) {
         return APP_ERR_SERVER_FAILURE;
     }
 
+    log_info("app stopped successfully");
+
     app_ctx.running = false;
 
     return APP_ERR_OK;
@@ -845,6 +859,8 @@ AppError_t app_deinit(void) {
 
     // Zero-out context on deinit
     memset(&app_ctx, 0, sizeof(App_t));
+
+    log_info("app deinitialized successfully");
 
     return APP_ERR_OK;
 }
