@@ -740,14 +740,18 @@ AppError_t app_init() {
     GpioError_t err_g = gpio_init(&app_ctx.gpio);
     if(err_g != GPIO_ERR_OK) {
         log_error("gpio_init failed (err: %d)", err_g);
+        #ifdef APP_INIT_RET_ON_HW_FAILURE
         return APP_ERR_GPIO_FAILURE;
+        #endif
     }
 
     // Initialize the i2c
     HwInterfaceError_t err_hw = hw_interface_init(&app_ctx.i2c, HW_INTERFACE_I2C);
     if(err_hw != HW_INTERFACE_ERR_OK) {
         log_error("hw_interface_init failed (err: %d)", err_hw);
+        #ifdef APP_INIT_RET_ON_HW_FAILURE
         return APP_ERR_HW_INTERFACE_FAILURE;
+        #endif
     }
 
     // Initialize all bme280 sensors defined in the sensors_config.h configuration file
@@ -761,7 +765,9 @@ AppError_t app_init() {
         SensorError_t err_s = bme280_init(&app_ctx.sens_bme280[i], SENSORS_CONFIG_BME280[i].addr, hw_if);
         if(err_s != SENSOR_ERR_OK) {
             log_error("bme280_init failed (err: %d)", err_hw);
+            #ifdef APP_INIT_RET_ON_HW_FAILURE
             return APP_ERR_SENSOR_FAILURE;
+            #endif
         }
     }
 

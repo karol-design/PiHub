@@ -10,6 +10,9 @@
 #define VER_MINOR 0
 #endif
 
+// Debugging options
+// #define APP_INIT_RET_ON_HW_FAILURE
+
 // Board config
 #define PIHUB_I2C_ADAPTER 1        // On RPI the I2C adapter is mounted as '/dev/i2c-1'
 #define NET_INTERFACE_NAME "wlan0" // Name of the network interface
