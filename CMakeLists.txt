@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.15)
 # Define basic project details
 project(
      pihubd
-     VERSION 0.1
+     VERSION 1.0
      DESCRIPTION "Simple smart-home server"
      LANGUAGES C)
 
@@ -13,6 +13,8 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Add CMocka Tests support
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/cmocka)
+
+add_compile_definitions(VER_MAJOR=${CMAKE_PROJECT_VERSION_MAJOR} VER_MINOR=${CMAKE_PROJECT_VERSION_MINOR})
 
 add_subdirectory(src)
 

@@ -2,6 +2,7 @@
 #include <systemd/sd-daemon.h> // for: systemd notifications
 
 #include "app/app.h"
+#include "utils/config.h"
 #include "utils/log.h"
 
 volatile sig_atomic_t sig_status = 0;
@@ -18,6 +19,8 @@ int main() {
         log_error("failed to set the SIGINT signal handler");
         return EXIT_FAILURE;
     }
+
+    log_info("Version: %d.%d (compiled: %s %s)", VER_MAJOR, VER_MINOR, __DATE__, __TIME__);
 
     // Initialize app controller
     AppError_t err = app_init();

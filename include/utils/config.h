@@ -1,6 +1,15 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
+// PiHub Versioning (backup in case not defined on compilation)
+#ifndef VER_MAJOR
+#define VER_MAJOR 0
+#endif
+
+#ifndef VER_MINOR
+#define VER_MINOR 0
+#endif
+
 // Board config
 #define PIHUB_I2C_ADAPTER 1        // On RPI the I2C adapter is mounted as '/dev/i2c-1'
 #define NET_INTERFACE_NAME "wlan0" // Name of the network interface
