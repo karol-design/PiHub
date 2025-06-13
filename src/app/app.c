@@ -2,6 +2,7 @@
 
 #include <errno.h>  // For: errno and related macros
 #include <limits.h> // For: ULONG_MAX etc.
+#include <stdio.h>  // For: printf etc.
 #include <stdlib.h> // For: strtoul()
 #include <string.h> // For: memset()
 #include <unistd.h> // For: sleep()

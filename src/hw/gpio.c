@@ -1,6 +1,7 @@
 #include "hw/gpio.h"
 
-#include <errno.h> // For: errno
+#include <errno.h>  // For: errno
+#include <string.h> // For: memset
 
 #include "utils/log.h"
 
