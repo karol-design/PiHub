@@ -11,7 +11,7 @@
 #endif
 
 // Debugging options
-// #define APP_INIT_RET_ON_HW_FAILURE
+// #define APP_INIT_RET_ON_HW_FAILURE // Comment that out to test the system without the hardware
 
 // Board config
 #define PIHUB_I2C_ADAPTER 1        // On RPI the I2C adapter is mounted as '/dev/i2c-1'
