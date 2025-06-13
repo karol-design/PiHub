@@ -1,0 +1,24 @@
+# Disable and remove the systemd service
+execute_process(COMMAND systemctl --quiet is-enabled pihub.service
+                RESULT_VARIABLE SERVICE_ENABLED)
+if(SERVICE_ENABLED EQUAL 0)
+  execute_process(COMMAND systemctl disable pihub.service)
+endif()
+execute_process(COMMAND systemctl stop pihub.service)
+execute_process(COMMAND ${CMAKE_COMMAND} -E rm -f /etc/systemd/system/pihub.service)
+execute_process(COMMAND ${CMAKE_COMMAND} -E rm -f /usr/local/bin/pihubd)
+
+execute_process(COMMAND systemctl daemon-reload)
+
+# Remove any other files listed in the install manifest (if present)
+
+if(NOT EXISTS "@CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt")
+  message(STATUS "Cannot find install manifest: @CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt")
+else()
+  file(READ "@CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt" files)
+  string(REPLACE "\n" ";" files "${files}")
+  foreach(file ${files})
+    message(STATUS "Uninstalling ${file}")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E rm -f ${file})
+  endforeach()
+endif()
