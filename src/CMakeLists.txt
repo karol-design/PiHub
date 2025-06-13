@@ -18,3 +18,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE systemd)
 
 # Enable logs by default
 target_compile_definitions(pihub_static PRIVATE LOGS_ENABLED=1)
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE LOGS_ENABLED=1)
