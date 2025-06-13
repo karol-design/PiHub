@@ -20,7 +20,7 @@
 
 // Board-independent PiHub config
 #define APP_SERVER_PORT "65002" // Port number (as a string) under which the PiHub server should be accessible
-#define APP_SERVER_MAX_CLIENTS 5          // Maximum number of clients connected at the same time
+#define APP_SERVER_MAX_CLIENTS 25         // Maximum number of clients connected at the same time
 #define APP_SERVER_MAX_CONN_REQUESTS 10   // Maximum number of pending connection reuqests
 #define APP_SERVER_RECV_DATA_BUF_SIZE 128 // Size of the buffer for new data from the clients
 
