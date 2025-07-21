@@ -1,34 +1,91 @@
-# PiHub | Smart Home Control Hub
+# 📡 PiHub – Smart Home Control Hub
 
-Raspberry Pi smart home system (C server and Python client) for remote control of home appliances (through GPIO), and querying the readings of multiple environmental sensors (temperature and humidity), all via a custom TCP-based protocol.
+> Smart home server running on Raspberry Pi with modular C backend and Python client.
 
-## Table of Contents
-- [Installation](#installation)
-- [Usage](#usage)
-- [Features](#features)
-- [Contributing](#contributing)
-- [License](#license)
+## 📌 Overview
 
-## Installation
-### Building and testing
-> cd <path_to_PiHub>
-> cmake -S . -B build [-DUT=ON]
-> cmake --build build
+PiHub is a multithreaded smart home controller for Raspberry Pi, using a command-driven TCP protocol. It allows control over GPIOs, querying environmental sensors, and monitoring system health. Designed to run as a daemon with systemd, it supports modular extensions and includes a Python client for graphing and control.
 
-> ./build/src/piHub
-> ./build/tests/unit_tests
+---
 
-### More
-...
+## 🔧 Key Features
 
-## Usage
-...
+- GPIO control and state queries
+- I2C/SPI environmental sensor support (BME280, etc.)
+- Server status (CPU temp, uptime, network)
+- Python client with graphing support
+- Daemonized via systemd; unit tested (CMocka)
+- Extensible via sensor interface
 
-## Features
-...
+---
 
-## Contributing
-Coding style conventions: Google C++ Style Guide (not really)
+## 📁 Project Structure
 
-## License
-...
+```
+src/
+├── app/         # Main loop, dispatcher, sysstat
+├── comm/        # TCP server
+├── hw/          # GPIO, I2C, SPI
+├── sensors/     # Bme280
+├── utils/       # Linked list, logging
+tools/           # Python client and tools
+tests/           # Unit tests
+docs/            # Project documentation
+```
+
+---
+
+## 🧠 Protocol
+
+```
+<target> <action> [parameters]
+```
+
+Examples:
+- `gpio set 8 on`
+- `sensor get 1 temp`
+- `server status`
+- `client disconnect`
+
+Features:
+- Case-insensitive commands
+- Parameter order is flexible
+
+---
+
+## ⚙️ Build & Run
+
+```bash
+cmake -B build -DUT=ON -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+./build/tests/test_piHub
+cmake --install build
+systemctl daemon-reload
+systemctl enable pihub
+systemctl start pihub
+journalctl -u pihub -n 20
+```
+
+### Python Client
+
+```bash
+python3 ./tools/plot_temperature.py
+```
+
+---
+
+## 🧪 Development & Debug
+
+```bash
+./build.sh --run
+valgrind ./build/src/pihubd
+nc 127.0.0.1 65002               # Test socket connection
+sudo i2cdetect -y 1              # List I2C devices
+gdb ./build/src/pihubd          # Debug
+```
+
+---
+
+## 📃 License
+
+MIT License
